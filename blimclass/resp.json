@@ -1,0 +1,588 @@
+{
+    "data": {
+        "groupName": "11 B",
+        "groupId": 1093706,
+        "rows": [
+            {
+                "subjectName": "Алгебра және анализ бастамалары",
+                "eduSubjectUuid": "3d0e5e45-b21b-447d-b036-e10ae9dcc683",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Алғашқы әскери және технологиялық дайындық",
+                "eduSubjectUuid": "c8678543-1177-455c-b062-bab1202f0551",
+                "scoreType": "no_score",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": null,
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Биология",
+                "eduSubjectUuid": "08cff965-1225-4ed6-9db6-24f3472fbe03",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 1,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 1
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "География",
+                "eduSubjectUuid": "736f118e-ee81-4579-aa24-a298ffe68131",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Геометрия",
+                "eduSubjectUuid": "d2f4e4cb-4b9f-42c5-8734-df9c50ebabbd",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Дене шынықтыру",
+                "eduSubjectUuid": "0c4f11be-e6fd-490b-b435-1e9bedc35a06",
+                "scoreType": "credit",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "1",
+                    "quarter3": "1",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Дүниежүзі тарихы",
+                "eduSubjectUuid": "eec31996-3711-4bd1-8b99-4a779940d3ea",
+                "scoreType": "mark",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 2,
+                    "totalMissCount": 2
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Жаһандық құзыреттілік",
+                "eduSubjectUuid": "6dfc47d0-9ff0-4805-a6a6-8c543472e566",
+                "scoreType": "credit",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "1",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Информатика",
+                "eduSubjectUuid": "76b6f1c9-1208-4aca-b5a4-25c1d4fd2f0d",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Информатика, жасанды интеллект және цифрлық мәдениет",
+                "eduSubjectUuid": "0f2cda1a-5729-4685-89a3-68bfc11908dc",
+                "scoreType": "credit",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 1,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 1
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "1",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Қазақ әдебиеті",
+                "eduSubjectUuid": "51f05db4-2671-4658-9884-81752d09d538",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Қазақ тілі",
+                "eduSubjectUuid": "1ca52489-730d-4ce2-8e14-9be9a13c2b32",
+                "scoreType": "mark",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Қазақстан тарихы",
+                "eduSubjectUuid": "5eea6bb8-dc2e-4903-8310-fce4f252ac71",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Құқық негіздері",
+                "eduSubjectUuid": "3187cbd5-0b0f-4eca-bf95-cdd7dbd6ad00",
+                "scoreType": "mark",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Орыс тілі мен әдебиеті",
+                "eduSubjectUuid": "586cc601-c392-42a4-9478-c9e74b7c5b94",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Тәрбие сағаты",
+                "eduSubjectUuid": "d5abc3d1-eb29-497d-ae8f-41ec2474e0c6",
+                "scoreType": "no_score",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": null,
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Физика",
+                "eduSubjectUuid": "e38daa7d-1e59-4dae-820a-1b99e440687c",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Химия",
+                "eduSubjectUuid": "ded8860b-92d5-4127-9fd5-b9d7b1cec66f",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Химия және болашақ мамандығым",
+                "eduSubjectUuid": "a0635a57-5536-41a7-a89b-ccf6b9275abb",
+                "scoreType": "credit",
+                "periodType": "halfyear",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "1",
+                    "quarter3": null,
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            },
+            {
+                "subjectName": "Шетел тілі (Ағылшын тілі)",
+                "eduSubjectUuid": "cbe1932e-b17b-428d-ba32-3affd9a0b33a",
+                "scoreType": "mark",
+                "periodType": "quarter",
+                "attendances": {
+                    "missingByAnotherReason": 0,
+                    "missingBySick": 0,
+                    "missingDue": 0,
+                    "missingWithoutReason": 0,
+                    "totalMissCount": 0
+                },
+                "attestations": {
+                    "quarter1": null,
+                    "quarter2": "5",
+                    "quarter3": "5",
+                    "quarter4": null
+                },
+                "yearScores": {
+                    "studentGroupUuid": null,
+                    "eduProgramSubjectUuid": null,
+                    "recommendedYearScore": null,
+                    "yearScore": null,
+                    "examScore": null,
+                    "recommendedFinalScore": null,
+                    "finalScore": null,
+                    "uuid": null
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,308 @@
+
+# BilimClass API Report
+
+Checked against live production BilimClass on 2026-03-29.
+
+Validated account context:
+- Login: `quldybaev_batyrkhan_3`
+- Role: `student`
+- School: `AQBOBEK LYCEUM`
+- School ID: `1013305`
+- Academic year: `2025`
+- Group: `11 B`
+- Group ID: `1093706`
+- Student group UUID: `5fb2db72-e8f1-4192-8697-b3908a5ece2f`
+- Student user ID: `88383016`
+
+## What was confirmed live
+
+Working authentication:
+- `POST https://api.bilimclass.kz/api/v2/os/login`
+  - Returns `access_token`, `refresh_token`, `user_info`, school metadata, group metadata, and student identifiers.
+
+Working grade and export endpoints for this student account:
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/periods?schoolId=1013305&eduYear=2025`
+  - Returns period metadata for the active academic year.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/year?schoolId=1013305&eduYear=2025`
+  - Returns yearly per-subject summary rows.
+  - Includes quarter attestations plus `yearScore`, `examScore`, and `finalScore`.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/subjects?schoolId=1013305&eduYear=2025&period=2&periodType=quarter&groupId=1093706`
+  - Returned 20 subject rows.
+  - Includes subject info, period info, schedule UUIDs, dates, mark limits, and final score.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/subjects?schoolId=1013305&eduYear=2025&period=3&periodType=quarter&groupId=1093706`
+  - Returned 20 subject rows.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/subjects?schoolId=1013305&eduYear=2025&period=2&periodType=halfyear&groupId=1093706`
+  - Returned 20 subject rows.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/subjects/excel?...`
+  - Returns a binary Excel export directly.
+- `GET https://api.bilimclass.kz/api/v4/os/clientoffice/diary/year?schoolId=1013305&eduYear=2025` with `Accept: excel`
+  - Returns a binary yearly Excel export directly.
+
+Useful but legacy or not suitable:
+- `GET https://api.bilimclass.kz/api/v2/os/diary/weeks`
+  - Works, but appears to be part of an older diary flow.
+- `GET https://api.bilimclass.kz/api/v2/os/diary`
+  - Returned `403` for this account.
+- `GET https://api.bilimclass.kz/api/v4/os/frontoffice/journal/group-list?...`
+  - Returned `403` for this student account.
+
+Period results observed live for this account:
+- Quarter `1`: empty
+- Quarter `2`: has data
+- Quarter `3`: has data
+- Quarter `4`: empty
+- Half-year `1`: empty
+- Half-year `2`: has data
+
+## Best integration options
+
+Recommended JSON integration:
+- Use `POST /api/v2/os/login` to get the bearer token.
+- Use `GET /api/v4/os/clientoffice/diary/year` for yearly subject summaries.
+- Use `GET /api/v4/os/clientoffice/diary/subjects` for quarter or half-year details.
+
+Recommended export-based integration:
+- Use `GET /api/v4/os/clientoffice/diary/subjects/excel`
+- Or use `GET /api/v4/os/clientoffice/diary/year` with `Accept: excel`
+- Parse the returned XLSX and push into the other web service.
+
+Practical parameter set for this student:
+- `schoolId=1013305`
+- `eduYear=2025`
+- `groupId=1093706`
+- Quarter detail: `period=2&periodType=quarter` or `period=3&periodType=quarter`
+- Half-year detail: `period=2&periodType=halfyear`
+
+Recommended field mapping for export:
+- Student identity:
+  - `user_info.userId`
+  - `user_info.studentInfo.fullname`
+  - `user_info.group.name`
+- School context:
+  - `user_info.school.name`
+  - `user_info.school.eduYears[0].schoolId`
+  - `user_info.school.eduYears[0].eduYear`
+- Subject/year summary:
+  - `subjectName`
+  - `scoreType`
+  - `attestations.quarter1`
+  - `attestations.quarter2`
+  - `attestations.quarter3`
+  - `attestations.quarter4`
+  - `yearScores.yearScore`
+  - `yearScores.examScore`
+  - `yearScores.finalScore`
+- Quarter detail:
+  - `subjectName`
+  - `finalScore`
+  - `periodType`
+  - `periodInfo.periodUuid`
+  - `periodInfo.scoreType`
+  - `schedules[].uuid`
+  - `schedules[].date`
+  - `schedules[].timeStart`
+  - `schedules[].markMax`
+  - `schedules[].type`
+
+## Endpoint families extracted from the live production bundle
+
+The current production JS bundle exposed 597 unique `/api/...` routes. The most relevant families are below.
+
+Authentication, session, profile:
+- `/api/logout`
+- `/api/v2/os/login`
+- `/api/v2/os/refresh_token`
+- `/api/v2/os/profile`
+- `/api/v2/os/profile/avatar/upload`
+- `/api/v2/os/profile/certificates`
+- `/api/v2/os/profile/need-pass-change`
+- `/api/v2/os/profile/password/change`
+- `/api/v2/os/profile/password/change/export`
+- `/api/v2/os/profile/password/change/list`
+- `/api/v2/os/profile/socials/status`
+- `/api/v2/os/active-sessions`
+- `/api/v2/os/ended-sessions`
+- `/api/v2/os/unset-session/:sessionId`
+- `/api/v2/os/unset-all-sessions`
+- `/api/v2/os/behalf_auth`
+- `/api/v2/os/get-behalf-auth-token`
+
+Student and parent diary / grades:
+- `/api/v2/os/diary`
+- `/api/v2/os/diary/weeks`
+- `/api/v2/os/attestation`
+- `/api/v2/os/score-log`
+- `/api/v4/os/clientoffice/diary/periods`
+- `/api/v4/os/clientoffice/diary/subjects`
+- `/api/v4/os/clientoffice/diary/subjects/excel`
+- `/api/v4/os/clientoffice/diary/year`
+- `/api/v4/os/clientoffice/parent/diary/periods`
+- `/api/v4/os/clientoffice/parent/diary/subjects`
+- `/api/v4/os/clientoffice/parent/diary/subjects/excel`
+- `/api/v4/os/clientoffice/parent/diary/year`
+- `/api/v4/os/frontoffice/diary/periods`
+- `/api/v4/os/frontoffice/diary/subjects`
+- `/api/v4/os/frontoffice/diary/subjects/excel`
+- `/api/v4/os/frontoffice/diary/year`
+
+Teacher journal, homework, exams, lecture:
+- `/api/online_school/control/journal/get-dates`
+- `/api/online_school/control/journal/get-group-progress`
+- `/api/online_school/control/journal/get-groups-subjects`
+- `/api/v2/os/control/journal/:groupId/:subjectId`
+- `/api/v2/os/control/journal/:groupId/:subjectId/:subgroupId`
+- `/api/v2/os/control/journal/edit-attestation-score`
+- `/api/v2/os/control/journal/edit-homework-score`
+- `/api/v2/os/control/journal/edit-lesson-score`
+- `/api/v2/os/control/journal/excel/:groupId/:subjectId`
+- `/api/v2/os/control/journal/excel/:groupId/:subjectId/:subgroupId`
+- `/api/v2/os/control/homework/:scheduleId/create`
+- `/api/v2/os/control/homework/:scheduleId/create/data`
+- `/api/v2/os/control/homework/get/:homeworkId`
+- `/api/v2/os/control/homework/getList/:homeworkId`
+- `/api/v2/os/control/homework/update/:homeworkUuid`
+- `/api/v2/os/control/homework/verify/:answerId`
+- `/api/v2/os/control/homework/table/get-options`
+- `/api/v2/os/control/homeworks`
+- `/api/v2/os/control/exams/get-my-exams`
+- `/api/v2/os/control/exams/get-user-sor`
+- `/api/v2/os/control/exams/get-user-soch`
+- `/api/v2/os/control/exams/getAllUserExams`
+- `/api/v2/os/control/exams/store/progress/:scheduleId`
+- `/api/v2/os/control/exams/store/teacher_progress/:lessonId/:userId`
+- `/api/v2/os/control/exams/storeContent/:lessonId`
+- `/api/v2/os/control/exams/storeFiles/:lessonId`
+- `/api/v2/os/control/exams/store_course_exams_answers`
+- `/api/v2/os/control/lecture/create/:calendarPlanLessonUUID`
+- `/api/v2/os/control/lecture/get-user-lectures`
+- `/api/v2/os/control/lecture/get/:answerId`
+- `/api/v2/os/control/lecture/verify/:answerId`
+- `/api/v2/os/control/lecture/monitoringByLecture/:lectureUuid/:groupId`
+- `/api/v2/os/homework/get/:answerId`
+- `/api/v2/os/homework/list`
+- `/api/v2/os/homework/send-answer/:answerId`
+- `/api/v2/os/lecture/get/:scheduleId`
+- `/api/v2/os/lecture/send-answer/:scheduleId`
+
+Schedule, group, backoffice:
+- `/api/v2/os/schedules`
+- `/api/v2/os/schedule/lesson/:scheduleId`
+- `/api/v2/os/control/schedules`
+- `/api/v2/os/control/schedule/lesson/:scheduleId`
+- `/api/v2/os/control/schedule/remove/:scheduleUuid`
+- `/api/v2/os/control/schedule/one-time-lesson/assign`
+- `/api/v2/os/control/schedule/one-time-lesson/bind-to-schedule/:scheduleUUID`
+- `/api/v2/os/control/schedule/one-time-lesson/dictionaries`
+- `/api/v2/os/backoffice/group`
+- `/api/v2/os/backoffice/group/:groupId`
+- `/api/v2/os/backoffice/group/list`
+- `/api/v2/os/backoffice/group/contingent/list/:groupId`
+- `/api/v2/os/backoffice/contingent`
+- `/api/v2/os/backoffice/contingent/export`
+- `/api/v2/os/backoffice/contingent/import`
+- `/api/v2/os/backoffice/contingent/archived-list/export`
+- `/api/v2/os/backoffice/personal`
+- `/api/v2/os/backoffice/personal/export`
+- `/api/v2/os/backoffice/personal/import`
+- `/api/v2/os/backoffice/personnel/archived-list/export`
+- `/api/v2/os/backoffice/calendar-plan-lessons/export`
+- `/api/v2/os/backoffice/schedule-week-export`
+
+Statistics and monitoring:
+- `/api/freedom/scoring_mechanics/student_scores`
+- `/api/v2/os/control/monitoring/schedule/:scheduleId`
+- `/api/v2/os/control/user-monitoring-archive/:lessonId/:userId`
+- `/api/v2/os/control/lecture/user-monitoring-archive/:lessonId/:userId`
+- `/api/v2/os/control/homework/user-monitoring-archive/:homeworkUuid/:userId`
+- `/api/v2/os/control/exams/user-monitoring-archive/:lessonId/:userId`
+- `/api/v2/os/statistic/get-by-school`
+- `/api/v2/os/statistic/aggregate`
+- `/api/v2/os/statistic/personnel`
+- `/api/v2/os/statistic/contingent`
+- `/api/v2/os/statistic/groups`
+- `/api/v2/os/statistic/scores/country`
+- `/api/v2/os/statistic/scores/region`
+- `/api/v2/os/statistic/scores/department`
+- `/api/v2/os/statistic/scores/school`
+- `/api/v2/os/statistic/scores/group/:groupId`
+- `/api/v2/os/statistic/teacher/rating`
+- `/api/v2/os/statistic/teacher/rating/export`
+
+Portfolio and references:
+- `/api/refs/regions`
+- `/api/refs/districts`
+- `/api/refs/localities`
+- `/api/refs/organizations`
+- `/api/refs/subjects`
+- `/api/refs/education-languages`
+- `/api/refs/positions-children`
+- `/api/v1/account/portfolio/attestations`
+- `/api/v1/account/portfolio/refs/achievement-forms`
+- `/api/v1/account/portfolio/refs/achievement-levels`
+- `/api/v1/account/portfolio/refs/achievement-types`
+- `/api/v1/account/portfolio/refs/achievement-user-types`
+- `/api/v2/account/portfolio/all`
+- `/api/v2/account/portfolio/base-info`
+- `/api/v2/account/portfolio/achievements`
+- `/api/v2/account/portfolio/refs/qualification-categories`
+- `/api/v2/portfolio/account-info/get-all`
+- `/api/v2/portfolio/attestation/get`
+- `/api/v2/portfolio/attestation/store`
+- `/api/v2/portfolio/attestation/update`
+- `/api/v2/portfolio/educations/get`
+- `/api/v2/portfolio/general-data/get`
+- `/api/v2/portfolio/general-files/get`
+- `/api/v2/portfolio/get-token`
+- `/api/v2/portfolio-spr/education-subjects`
+- `/api/v2/portfolio-spr/positions-flat`
+- `/api/v2/portfolio-spr/qualification-categories`
+
+Other platform families visible in the live bundle:
+- `/api/v2/os/banner`
+- `/api/v2/os/config/microservices`
+- `/api/v2/os/certification`
+- `/api/v2/os/certification/:courseId`
+- `/api/v2/os/certification/store-answer`
+- `/api/v2/os/chats/get-group-chat-room/:groupId/:disciplineId`
+- `/api/v2/os/chats/get-personal-chats`
+- `/api/v2/os/chats/get-personal-chats-data`
+- `/api/v2/os/competitions/teacher_novator`
+- `/api/v2/os/courses/get-pisa/:entityId`
+- `/api/v2/os/gamification/portfolios`
+- `/api/v2/os/gamification/status`
+- `/api/v2/os/payment/history`
+- `/api/v2/os/review`
+- `/api/v2/os/user-info`
+- `/api/v2/kundelik/auth`
+- `/api/v2/kundelik/register`
+- `/api/v2/kundelik/user-info`
+- `/api/v2/kundelik/assign`
+- `/api/v2/external/lesson`
+- `/api/v2/external/homework`
+- `/api/v2/external/lesson-redirect`
+
+## Recommended implementation path
+
+If the target service accepts JSON:
+1. Log in with `POST /api/v2/os/login`
+2. Save the bearer token
+3. Pull yearly overview from `GET /api/v4/os/clientoffice/diary/year`
+4. Pull per-period detail from `GET /api/v4/os/clientoffice/diary/subjects`
+5. Normalize subjects and scores into your destination schema
+
+If the target service already consumes spreadsheets:
+1. Log in with `POST /api/v2/os/login`
+2. Call `GET /api/v4/os/clientoffice/diary/subjects/excel` or yearly export
+3. Parse XLSX
+4. Push rows into the destination service
+
+## Bottom line
+
+The current live BilimClass integration path for this student is:
+- Auth via `POST /api/v2/os/login`
+- JSON grades via `GET /api/v4/os/clientoffice/diary/year`
+- JSON period detail via `GET /api/v4/os/clientoffice/diary/subjects`
+- Native Excel export via `GET /api/v4/os/clientoffice/diary/subjects/excel`
+
+This is the cleanest way to export grades into another web service from this account.
+                                                                                                                                                                                                                                            

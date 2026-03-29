@@ -1,0 +1,22 @@
+POST /api/v2/os/login HTTP/2
+Host: api.bilimclass.kz
+Content-Length: 68
+Sec-Ch-Ua-Platform: "Windows"
+Authorization: Bearer
+X-Mathrix: 16b4e335-1edc-4eb1-b17c-947893db7ca6
+Accept-Language: ru-RU,ru;q=0.9
+Sec-Ch-Ua: "Chromium";v="133", "Not(A:Brand";v="99"
+X-Localization: en
+Sec-Ch-Ua-Mobile: ?0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36
+Accept: application/json
+Content-Type: application/json
+Origin: https://www.bilimclass.kz
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: https://www.bilimclass.kz/
+Accept-Encoding: gzip, deflate, br
+Priority: u=1, i
+
+{"eduYear":2025,"login":"quldybaev_batyrkhan_3","password":"968682"}

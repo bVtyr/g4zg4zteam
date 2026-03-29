@@ -1,0 +1,19 @@
+GET /api/v4/os/clientoffice/diary/subjects?schoolId=1013305&eduYear=2025&period=3&periodType=quarter&groupId=1093706 HTTP/2
+Host: api.bilimclass.kz
+Sec-Ch-Ua-Platform: "Windows"
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5M2Y5ZGU0ZS1iYzYzLTQ4MGYtYTI4NC03ZTE2NmYwOWI0NjQiLCJqdGkiOiI3ZGYxM2Q0ODkwZDRlOWRiNjNhMWY4MzYxNmE4NjBjNzVjZjE1ODU3MzJjMjExNTY4ZmVhNmRkMmM2ZDg4Zjc5MDEyMTZkYjE0ZDMxNmYwNyIsImlhdCI6MTc3NDc3OTAxMi45MTk3NiwibmJmIjoxNzc0Nzc5MDEyLjkxOTc2MiwiZXhwIjoxODA2MzE1MDEyLjg4Nzc3OSwic3ViIjoiODgzODMwMTYiLCJzY29wZXMiOltdfQ.rlx_C1TvadABK4kl1tzXuZd28zOV_5YjjvvyqBIUEFFdNIUhgiO3_b-ZEMtKT5AQn8SwImVKPvbyP0IUsp2FDk27DdXHXDLLICJ7ueOWp7hN1mjKXztv559y0XC86f_T0FqO4Xi4h6z4x43kaOW42CPNq5nvTnXSpTSGdjZzh4z9gv7y638nopVuCiS8Cam1iFUa7yfIDeDGRdTu6jRx6rNxRbNqUZajTVTbZzRXdODU4uaxelas4uGxmF-gbqnv05UlcjZG1w-aQFYmgYqGSO60WqiiWOx-ja38Qauv0IUQv7NoUrcAixIt17ZmS5ohrwNvVSDZL2TTaM1fZXjVGvHuq-h631MHveTy-eI1GbzrPd26y1cpL2HG9K5ga7AGOgqciielhcKEP5xUl19bv8rCCkDQIO5Y7hN2V1Cf_DaHnhNd5keSSXOHU78_r4Tu8m8Zw5IDAf3iVS9O_LiHpfno2_A_V8SONjkkkCtWIl7WAtc5Jh4tjtbQGkjrHoADjU-3et3JsGjJwVX4axPnXqkTGVBlwNmx4LoMWItJIfrqy8oT3NkjNyAjDyMSfnFyDhXArd7SNcrA9EOBjp_HupKlf7H4qCRzLr0ekM6OD96pMHLA1Ok52sVdjf2_ZBZ0e5YCy9kOep8QmZQY4vxi8hrSQJ5Y586NYimzUTnUv9I
+Accept-Language: ru-RU,ru;q=0.9
+Sec-Ch-Ua: "Chromium";v="133", "Not(A:Brand";v="99"
+X-Localization: en
+Sec-Ch-Ua-Mobile: ?0
+X-School-Id: 1013305
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36
+Accept: application/json
+Origin: https://www.bilimclass.kz
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: https://www.bilimclass.kz/
+Accept-Encoding: gzip, deflate, br
+Priority: u=1, i
+

@@ -1,0 +1,786 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  teacher
+  parent
+  admin
+}
+
+enum PeriodType {
+  quarter
+  halfyear
+  year
+  weekly
+}
+
+enum ScoreType {
+  mark
+  credit
+  no_score
+}
+
+enum GradeSource {
+  mock
+  bilimclass
+  teacher
+  manual
+  derived
+}
+
+enum TrendLabel {
+  improving
+  stable
+  declining
+  critical_decline
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum EventType {
+  news
+  competition
+  assembly
+  celebration
+  meeting
+}
+
+enum NotificationScope {
+  role
+  class
+  parallel
+  school
+  individual
+}
+
+enum ScheduleEntryType {
+  lesson
+  pair
+  double_lesson
+  academic_hour
+  event
+  stream
+  ribbon
+  ribbon_group
+  homeroom
+  self_study
+}
+
+enum ScheduleEntryStatus {
+  active
+  replaced
+  moved
+  cancelled
+  draft
+}
+
+enum RoomType {
+  standard
+  lab
+  gym
+  assembly
+  library
+  coworking
+  outdoor
+}
+
+enum ScheduleConflictType {
+  teacher_overlap
+  room_overlap
+  class_overlap
+  teacher_unavailable
+  room_unavailable
+  invalid_subject_assignment
+  broken_locked_entry
+  replacement_not_found
+  room_suitability
+}
+
+enum ScheduleConflictSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum ScheduleGenerationRunStatus {
+  queued
+  dry_run
+  applied
+  failed
+}
+
+enum SyncMode {
+  mock
+  live
+}
+
+enum SyncStatus {
+  success
+  failed
+  partial
+}
+
+enum ScheduleChangeReason {
+  teacher_absence
+  manual_adjustment
+  event_override
+  imported_from_excel
+  generator_rebuild
+  replacement_assignment
+}
+
+enum AuditEventType {
+  auth
+  parent_link
+  bilimclass
+  user_update
+  grade_update
+  admin_action
+  suspicious_activity
+  system
+}
+
+enum AuditStatus {
+  success
+  failed
+  warning
+}
+
+model User {
+  id              String                @id @default(cuid())
+  username        String                @unique
+  passwordHash    String
+  role            Role
+  fullName        String
+  email           String?               @unique
+  isBlocked       Boolean               @default(false)
+  blockedReason   String?
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  lastUserAgent   String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  studentProfile  StudentProfile?
+  teacherProfile  TeacherProfile?
+  parentProfile   ParentProfile?
+  adminProfile    AdminProfile?
+  refreshTokens   RefreshToken[]
+  notifications   NotificationReceipt[]
+  auditLogs       AuditLog[]            @relation("AuditActor")
+  targetAuditLogs AuditLog[]            @relation("AuditTarget")
+  scheduleRuns    ScheduleGenerationRun[] @relation("GenerationRunActor")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SchoolClass {
+  id               String                    @id @default(cuid())
+  name             String                    @unique
+  gradeLevel       Int
+  section          String
+  parallelLabel    String
+  students         StudentProfile[]
+  assignments      TeachingAssignment[]
+  scheduleEntries  ScheduleEntry[]
+  classGroups      ClassGroup[]
+  templateRequests ScheduleTemplateRequest[]
+  parentLinks      ParentStudentLink[]
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  ribbonGroupItems RibbonGroupItem[]
+}
+
+model StudentProfile {
+  id                    String                 @id @default(cuid())
+  userId                String                 @unique
+  classId               String
+  studentCode           String                 @unique
+  verifiedProfile       Boolean                @default(false)
+  cumulativeScore       Float                  @default(0)
+  rank                  Int?                   @default(0)
+  bilimClassGroupId     Int?
+  bilimClassStudentUuid String?
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolClass           SchoolClass            @relation(fields: [classId], references: [id], onDelete: Restrict)
+  grades                GradeRecord[]
+  attendances           AttendanceRecord[]
+  achievements          Achievement[]
+  certificates          Certificate[]
+  portfolioItems        PortfolioItem[]
+  goals                 Goal[]
+  leaderboardScores     LeaderboardScore[]
+  riskAssessments       RiskAssessment[]
+  parentLinks           ParentStudentLink[]
+  parentLinkCodes       ParentLinkCode[]
+  badgeAwards           BadgeAward[]
+  bilimClassConnections BilimClassConnection[]
+}
+
+model TeacherProfile {
+  id               String                    @id @default(cuid())
+  userId           String                    @unique
+  title            String?
+  expertise        String?
+  preferredRoomId  String?
+  isActive         Boolean                   @default(true)
+  canSubstitute    Boolean                   @default(true)
+  availabilityNote String?
+  substituteWeight Int                       @default(50)
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments      TeachingAssignment[]
+  availabilities   TeacherAvailability[]
+  absences         TeacherAbsence[]
+  classGroups      ClassGroup[]
+  templateRequests ScheduleTemplateRequest[]
+  scheduleEntries  ScheduleEntry[]
+  preferredRoom    Room?                     @relation("PreferredRoom", fields: [preferredRoomId], references: [id], onDelete: SetNull)
+  ribbonGroupItems RibbonGroupItem[]
+}
+
+model ParentProfile {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  phone             String?
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links             ParentStudentLink[]
+  consumedLinkCodes ParentLinkCode[]
+}
+
+model AdminProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  department  String?
+  accessLevel String?
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ParentStudentLink {
+  id          String         @id @default(cuid())
+  parentId    String
+  studentId   String
+  classId     String
+  relation    String
+  createdAt   DateTime       @default(now())
+  parent      ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolClass SchoolClass    @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
+model ParentLinkCode {
+  id             String         @id @default(cuid())
+  studentId      String
+  code           String         @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  usedByParentId String?
+  createdAt      DateTime       @default(now())
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  usedByParent   ParentProfile? @relation(fields: [usedByParentId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, expiresAt])
+}
+
+model Subject {
+  id               String                    @id @default(cuid())
+  name             String                    @unique
+  category         String
+  creditType       ScoreType                 @default(mark)
+  assignments      TeachingAssignment[]
+  classGroups      ClassGroup[]
+  grades           GradeRecord[]
+  attendances      AttendanceRecord[]
+  risks            RiskAssessment[]
+  templateRequests ScheduleTemplateRequest[]
+  ribbonItems      RibbonGroupItem[]
+  scheduleEntries  ScheduleEntry[]
+}
+
+model Room {
+  id                  String                    @id @default(cuid())
+  name                String                    @unique
+  capacity            Int
+  suitableFor         String?
+  type                RoomType                  @default(standard)
+  isActive            Boolean                   @default(true)
+  allowEvents         Boolean                   @default(false)
+  prioritySubjects    String?
+  assignments         TeachingAssignment[]
+  availabilities      RoomAvailability[]
+  scheduleEntries     ScheduleEntry[]
+  templateRequests    ScheduleTemplateRequest[]
+  preferredByTeachers TeacherProfile[]          @relation("PreferredRoom")
+  ribbonGroupItems    RibbonGroupItem[]
+}
+
+model TimeSlot {
+  id          String               @id @default(cuid())
+  slotNumber  Int                  @unique
+  label       String?
+  startTime   String
+  endTime     String
+  isBreak     Boolean              @default(false)
+  breakLabel  String?
+  isActive    Boolean              @default(true)
+  sortOrder   Int                  @default(0)
+  entries     ScheduleEntry[]
+  teacherAvailabilities TeacherAvailability[]
+  roomAvailabilities    RoomAvailability[]
+}
+
+model ClassGroup {
+  id              String                    @id @default(cuid())
+  classId         String
+  subjectId       String?
+  teacherId       String?
+  name            String
+  code            String?
+  createdAt       DateTime                  @default(now())
+  schoolClass     SchoolClass               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject         Subject?                  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher         TeacherProfile?           @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  requests        ScheduleTemplateRequest[]
+  ribbonItems     RibbonGroupItem[]
+  scheduleEntries ScheduleEntry[]
+
+  @@unique([classId, name])
+}
+
+model TeachingAssignment {
+  id              String          @id @default(cuid())
+  teacherId       String
+  subjectId       String
+  classId         String
+  roomId          String?
+  weeklyLoad      Int             @default(2)
+  subgroup        String?
+  streamKey       String?
+  teacher         TeacherProfile  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolClass     SchoolClass     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  room            Room?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  scheduleEntries ScheduleEntry[]
+}
+
+model GradeRecord {
+  id              String         @id @default(cuid())
+  subjectId       String
+  studentId       String
+  source          GradeSource
+  periodType      PeriodType
+  periodNumber    Int
+  scoreType       ScoreType
+  rawScore        String?
+  normalizedScore Float?
+  finalScore      Float?
+  recordedAt      DateTime
+  schoolYear      Int
+  trendSnapshot   TrendLabel?
+  bilimClassRowId String?
+  isHidden        Boolean        @default(false)
+  adminNote       String?
+  updatedAt       DateTime       @default(now()) @updatedAt
+  subject         Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model AttendanceRecord {
+  id                     String         @id @default(cuid())
+  studentId              String
+  subjectId              String?
+  schoolYear             Int
+  periodType             PeriodType
+  periodNumber           Int
+  totalMissCount         Int
+  missingBySick          Int
+  missingWithoutReason   Int
+  missingDue             Int
+  missingByAnotherReason Int
+  recordedAt             DateTime
+  student                StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject                Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+}
+
+model Achievement {
+  id          String         @id @default(cuid())
+  studentId   String
+  title       String
+  level       String
+  description String?
+  achievedAt  DateTime
+  verified    Boolean        @default(true)
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Certificate {
+  id        String         @id @default(cuid())
+  studentId String
+  title     String
+  issuer    String
+  issuedAt  DateTime
+  verified  Boolean        @default(true)
+  url       String?
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model PortfolioItem {
+  id          String         @id @default(cuid())
+  studentId   String
+  type        String
+  title       String
+  description String?
+  verified    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id           String         @id @default(cuid())
+  studentId    String
+  title        String
+  targetValue  Float
+  currentValue Float          @default(0)
+  dueDate      DateTime
+  status       String         @default("active")
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Badge {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  description String
+  awards      BadgeAward[]
+}
+
+model BadgeAward {
+  id        String         @id @default(cuid())
+  badgeId   String
+  studentId String
+  awardedAt DateTime       @default(now())
+  badge     Badge          @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([badgeId, studentId])
+}
+
+model LeaderboardScore {
+  id         String         @id @default(cuid())
+  studentId  String
+  periodKey  String
+  points     Int
+  streakDays Int            @default(0)
+  rank       Int            @default(0)
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model RiskAssessment {
+  id              String         @id @default(cuid())
+  studentId       String
+  subjectId       String
+  riskScore       Float
+  probabilityFail Float
+  trend           TrendLabel
+  level           RiskLevel
+  breakdownJson   String
+  explanation     String
+  recommendations String
+  computedAt      DateTime       @default(now())
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject         Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subjectId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  type        EventType
+  startsAt    DateTime
+  endsAt      DateTime
+  location    String?
+  isPublished Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+}
+
+model Notification {
+  id              String                @id @default(cuid())
+  title           String
+  body            String
+  scope           NotificationScope
+  targetRoles     String?
+  targetClassIds  String?
+  targetParallel  String?
+  createdAt       DateTime              @default(now())
+  createdBy       String?
+  scheduleEntryId String?
+  receipts        NotificationReceipt[]
+}
+
+model NotificationReceipt {
+  id             String       @id @default(cuid())
+  notificationId String
+  userId         String
+  isRead         Boolean      @default(false)
+  deliveredAt    DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+}
+
+model ScheduleEntry {
+  id            String              @id @default(cuid())
+  type          ScheduleEntryType
+  status        ScheduleEntryStatus @default(active)
+  title         String
+  schoolYear    String              @default("2025-2026")
+  term          String              @default("Q1")
+  classId       String?
+  classGroupId  String?
+  subjectId     String?
+  teacherId     String?
+  roomId        String?
+  timeSlotId    String?
+  assignmentId  String?
+  ribbonId      String?
+  ribbonItemId  String?
+  dayOfWeek     Int
+  slotNumber    Int?
+  slotIndex     Int?
+  durationSlots Int                 @default(1)
+  startTime     String
+  endTime       String
+  effectiveDate DateTime
+  subgroup      String?
+  streamKey     String?
+  isGenerated   Boolean             @default(false)
+  isManualOverride Boolean          @default(false)
+  isLocked      Boolean             @default(false)
+  isReplacement Boolean             @default(false)
+  sourceSheet   String?
+  importBatchId String?
+  notes         String?
+  schoolClass   SchoolClass?        @relation(fields: [classId], references: [id], onDelete: SetNull)
+  classGroup    ClassGroup?         @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  subject       Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher       TeacherProfile?     @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  room          Room?               @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  timeSlot      TimeSlot?           @relation(fields: [timeSlotId], references: [id], onDelete: SetNull)
+  assignment    TeachingAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  ribbon        ScheduleRibbon?     @relation(fields: [ribbonId], references: [id], onDelete: SetNull)
+  ribbonItem    RibbonGroupItem?    @relation(fields: [ribbonItemId], references: [id], onDelete: SetNull)
+  changeLogs    ScheduleChangeLog[]
+  generationRun ScheduleGenerationRun? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@index([schoolYear, term, dayOfWeek, slotNumber])
+  @@index([classId, dayOfWeek, slotNumber])
+  @@index([teacherId, dayOfWeek, slotNumber])
+  @@index([roomId, dayOfWeek, slotNumber])
+}
+
+model TeacherAvailability {
+  id        String         @id @default(cuid())
+  teacherId String
+  dayOfWeek Int
+  slotNumber Int?
+  timeSlotId String?
+  startTime String
+  endTime   String
+  available Boolean        @default(true)
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  timeSlot  TimeSlot?      @relation(fields: [timeSlotId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, dayOfWeek, slotNumber])
+}
+
+model RoomAvailability {
+  id        String    @id @default(cuid())
+  roomId     String
+  dayOfWeek  Int
+  slotNumber Int?
+  timeSlotId String?
+  startTime  String
+  endTime    String
+  available  Boolean   @default(true)
+  room       Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  timeSlot   TimeSlot? @relation(fields: [timeSlotId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, dayOfWeek, slotNumber])
+}
+
+model TeacherAbsence {
+  id        String         @id @default(cuid())
+  teacherId String
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime       @default(now())
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+}
+
+model ScheduleTemplateRequest {
+  id                 String            @id @default(cuid())
+  title              String
+  schoolYear         String            @default("2025-2026")
+  term               String            @default("Q1")
+  classId            String?
+  classGroupId       String?
+  teacherId          String
+  subjectId          String?
+  preferredRoomId    String?
+  type               ScheduleEntryType @default(lesson)
+  lessonsPerWeek     Int               @default(1)
+  durationSlots      Int               @default(1)
+  preferredDaysJson  String?
+  preferredSlotsJson String?
+  sourceSheet        String?
+  importedFromExcel  Boolean           @default(false)
+  isHeavy            Boolean           @default(false)
+  isLocked           Boolean           @default(false)
+  notes              String?
+  createdAt          DateTime          @default(now())
+  schoolClass        SchoolClass?      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classGroup         ClassGroup?       @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  teacher            TeacherProfile    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject            Subject?          @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  preferredRoom      Room?             @relation(fields: [preferredRoomId], references: [id], onDelete: SetNull)
+}
+
+model ScheduleGenerationRun {
+  id              String                      @id @default(cuid())
+  schoolYear      String
+  term            String
+  status          ScheduleGenerationRunStatus
+  dryRun          Boolean                     @default(false)
+  triggeredById   String?
+  totalRequests   Int                         @default(0)
+  generatedCount  Int                         @default(0)
+  conflictCount   Int                         @default(0)
+  importSource    String?
+  notes           String?
+  startedAt       DateTime                    @default(now())
+  finishedAt      DateTime?
+  triggeredBy     User?                       @relation("GenerationRunActor", fields: [triggeredById], references: [id], onDelete: SetNull)
+  entries         ScheduleEntry[]
+}
+
+model ScheduleRibbon {
+  id        String            @id @default(cuid())
+  title     String
+  strict    Boolean           @default(true)
+  dayOfWeek Int?
+  slotIndex Int?
+  createdAt DateTime          @default(now())
+  items     RibbonGroupItem[]
+  entries   ScheduleEntry[]
+}
+
+model RibbonGroupItem {
+  id           String          @id @default(cuid())
+  ribbonId     String
+  classId      String
+  classGroupId String?
+  subjectId    String?
+  teacherId    String?
+  roomId       String?
+  title        String
+  sortOrder    Int             @default(0)
+  ribbon       ScheduleRibbon  @relation(fields: [ribbonId], references: [id], onDelete: Cascade)
+  schoolClass  SchoolClass     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classGroup   ClassGroup?     @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  subject      Subject?        @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher      TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  room         Room?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  entries      ScheduleEntry[]
+}
+
+model ScheduleChangeLog {
+  id                   String               @id @default(cuid())
+  scheduleEntryId      String
+  previousTeacherId    String?
+  replacementTeacherId String?
+  previousRoomId       String?
+  newDayOfWeek         Int?
+  newSlotIndex         Int?
+  ribbonId             String?
+  reason               ScheduleChangeReason
+  affectedDate         DateTime
+  notes                String?
+  scheduleEntry        ScheduleEntry        @relation(fields: [scheduleEntryId], references: [id], onDelete: Cascade)
+}
+
+model BilimClassConnection {
+  id              String              @id @default(cuid())
+  linkedStudentId String?
+  mode            SyncMode
+  baseUrl         String
+  login           String?
+  password        String?
+  schoolId        Int
+  eduYear         Int
+  groupId         Int?
+  accessToken     String?
+  refreshToken    String?
+  lastStatus      String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime            @default(now())
+  student         StudentProfile?     @relation(fields: [linkedStudentId], references: [id], onDelete: SetNull)
+  syncLogs        BilimClassSyncLog[]
+}
+
+model BilimClassSyncLog {
+  id              String               @id @default(cuid())
+  connectionId    String
+  operation       String
+  status          SyncStatus
+  requestPayload  String?
+  responseSummary String?
+  errorMessage    String?
+  createdAt       DateTime             @default(now())
+  connection      BilimClassConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id           String         @id @default(cuid())
+  eventType    AuditEventType
+  action       String
+  status       AuditStatus
+  actorUserId  String?
+  actorRole    Role?
+  targetUserId String?
+  entityType   String?
+  entityId     String?
+  message      String
+  metadataJson String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime       @default(now())
+  actorUser    User?          @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser   User?          @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([status, createdAt])
+}
