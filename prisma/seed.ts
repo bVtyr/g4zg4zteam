@@ -17,6 +17,9 @@ async function resetDatabase() {
   await prisma.notificationReceipt.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.scheduleChangeLog.deleteMany();
+  await prisma.scheduleApplyHistory.deleteMany();
+  await prisma.scheduleDraftEntry.deleteMany();
+  await prisma.scheduleDraftBatch.deleteMany();
   await prisma.scheduleEntry.deleteMany();
   await prisma.scheduleGenerationRun.deleteMany();
   await prisma.ribbonGroupItem.deleteMany();

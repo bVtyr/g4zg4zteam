@@ -24,6 +24,12 @@ export function ScheduleSidebarSection({
       <div className="space-y-1">
         {scheduleSectionItems.map((item) => {
           const active = item.href === "/admin/schedule" ? currentPath === item.href : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+          const label =
+            item.key === "resources"
+              ? locale === "kz"
+                ? "Resources"
+                : "Ресурсы"
+              : copy[item.key];
           return (
             <Link
               key={item.href}
@@ -33,7 +39,7 @@ export function ScheduleSidebarSection({
                 active ? "bg-white text-ink" : "text-white/70 hover:bg-white/10 hover:text-white"
               )}
             >
-              <span>{copy[item.key]}</span>
+              <span>{label}</span>
               <ChevronRight className={cn("h-4 w-4 opacity-60", active && "opacity-100")} />
             </Link>
           );

@@ -1,17 +1,17 @@
 ﻿import { Role } from "@prisma/client";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { PageSection } from "@/components/layout/page-section";
-import { ConflictTable } from "@/components/schedule/conflict-table";
+import { ScheduleIssueStack } from "@/components/schedule/schedule-issue-stack";
 import { getCurrentLocale } from "@/lib/i18n/server";
 import { schedulePageCopy } from "@/lib/schedule/copy";
 import { requirePageRole } from "@/lib/services/portal-data";
-import { getScheduleModuleData } from "@/lib/services/schedule-module-service";
+import { getScheduleAdminWorkspace } from "@/lib/services/schedule-planning-service";
 
 export default async function AdminScheduleConflictsPage() {
   const locale = await getCurrentLocale();
   const t = schedulePageCopy[locale].conflicts;
   const session = await requirePageRole([Role.admin]);
-  const data = await getScheduleModuleData();
+  const workspace = await getScheduleAdminWorkspace();
 
   return (
     <DashboardShell
@@ -23,7 +23,11 @@ export default async function AdminScheduleConflictsPage() {
       subtitle={t.subtitle}
     >
       <PageSection title={t.table}>
-        <ConflictTable locale={locale} conflicts={data.conflicts} />
+        <ScheduleIssueStack
+          locale={locale}
+          conflicts={workspace.conflicts}
+          unplaced={workspace.latestDraft?.unplaced ?? []}
+        />
       </PageSection>
     </DashboardShell>
   );

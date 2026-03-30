@@ -122,6 +122,20 @@ enum ScheduleGenerationRunStatus {
   failed
 }
 
+enum ScheduleDraftBatchStatus {
+  draft
+  applied
+  failed
+  archived
+}
+
+enum ScheduleDraftEntrySource {
+  generated
+  preserved_locked
+  preserved_manual
+  imported
+}
+
 enum SyncMode {
   mock
   live
@@ -182,6 +196,8 @@ model User {
   auditLogs       AuditLog[]            @relation("AuditActor")
   targetAuditLogs AuditLog[]            @relation("AuditTarget")
   scheduleRuns    ScheduleGenerationRun[] @relation("GenerationRunActor")
+  scheduleDraftBatches ScheduleDraftBatch[] @relation("ScheduleDraftActor")
+  scheduleApplyHistory ScheduleApplyHistory[] @relation("ScheduleApplyActor")
 }
 
 model RefreshToken {
@@ -208,6 +224,7 @@ model SchoolClass {
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
   ribbonGroupItems RibbonGroupItem[]
+  draftEntries     ScheduleDraftEntry[]
 }
 
 model StudentProfile {
@@ -255,6 +272,7 @@ model TeacherProfile {
   scheduleEntries  ScheduleEntry[]
   preferredRoom    Room?                     @relation("PreferredRoom", fields: [preferredRoomId], references: [id], onDelete: SetNull)
   ribbonGroupItems RibbonGroupItem[]
+  draftEntries     ScheduleDraftEntry[]
 }
 
 model ParentProfile {
@@ -315,6 +333,7 @@ model Subject {
   templateRequests ScheduleTemplateRequest[]
   ribbonItems      RibbonGroupItem[]
   scheduleEntries  ScheduleEntry[]
+  draftEntries     ScheduleDraftEntry[]
 }
 
 model Room {
@@ -332,6 +351,7 @@ model Room {
   templateRequests    ScheduleTemplateRequest[]
   preferredByTeachers TeacherProfile[]          @relation("PreferredRoom")
   ribbonGroupItems    RibbonGroupItem[]
+  draftEntries        ScheduleDraftEntry[]
 }
 
 model TimeSlot {
@@ -363,6 +383,7 @@ model ClassGroup {
   requests        ScheduleTemplateRequest[]
   ribbonItems     RibbonGroupItem[]
   scheduleEntries ScheduleEntry[]
+  draftEntries    ScheduleDraftEntry[]
 
   @@unique([classId, name])
 }
@@ -381,6 +402,7 @@ model TeachingAssignment {
   schoolClass     SchoolClass     @relation(fields: [classId], references: [id], onDelete: Cascade)
   room            Room?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
   scheduleEntries ScheduleEntry[]
+  draftEntries    ScheduleDraftEntry[]
 }
 
 model GradeRecord {
@@ -685,6 +707,7 @@ model ScheduleGenerationRun {
   finishedAt      DateTime?
   triggeredBy     User?                       @relation("GenerationRunActor", fields: [triggeredById], references: [id], onDelete: SetNull)
   entries         ScheduleEntry[]
+  draftBatch      ScheduleDraftBatch?
 }
 
 model ScheduleRibbon {
@@ -696,6 +719,7 @@ model ScheduleRibbon {
   createdAt DateTime          @default(now())
   items     RibbonGroupItem[]
   entries   ScheduleEntry[]
+  draftEntries ScheduleDraftEntry[]
 }
 
 model RibbonGroupItem {
@@ -715,6 +739,104 @@ model RibbonGroupItem {
   teacher      TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   room         Room?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
   entries      ScheduleEntry[]
+  draftEntries ScheduleDraftEntry[]
+}
+
+model ScheduleDraftBatch {
+  id                  String                   @id @default(cuid())
+  schoolYear          String
+  term                String
+  scheduleProfile     String                   @default("database")
+  status              ScheduleDraftBatchStatus @default(draft)
+  dryRun              Boolean                  @default(true)
+  respectManualLocked Boolean                  @default(true)
+  selectedClassIds    String
+  activeDaysJson      String
+  maxLessonsPerDay    Int
+  optimizationJson    String?
+  summaryJson         String?
+  conflictsJson       String?
+  unplacedJson        String?
+  notes               String?
+  generatedCount      Int                      @default(0)
+  unplacedCount       Int                      @default(0)
+  conflictCount       Int                      @default(0)
+  exportedAt          DateTime?
+  appliedAt           DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  createdById         String?
+  generationRunId     String?                  @unique
+  createdBy           User?                    @relation("ScheduleDraftActor", fields: [createdById], references: [id], onDelete: SetNull)
+  generationRun       ScheduleGenerationRun?   @relation(fields: [generationRunId], references: [id], onDelete: SetNull)
+  entries             ScheduleDraftEntry[]
+  applyHistory        ScheduleApplyHistory[]
+
+  @@index([schoolYear, term, createdAt])
+}
+
+model ScheduleDraftEntry {
+  id               String                   @id @default(cuid())
+  batchId          String
+  source           ScheduleDraftEntrySource @default(generated)
+  originalEntryId  String?
+  title            String
+  type             ScheduleEntryType
+  schoolYear       String                   @default("2025-2026")
+  term             String                   @default("Q1")
+  classId          String?
+  classGroupId     String?
+  subjectId        String?
+  teacherId        String?
+  roomId           String?
+  assignmentId     String?
+  ribbonId         String?
+  ribbonItemId     String?
+  dayOfWeek        Int
+  slotNumber       Int?
+  slotIndex        Int?
+  durationSlots    Int                      @default(1)
+  startTime        String
+  endTime          String
+  subgroup         String?
+  streamKey        String?
+  isGenerated      Boolean                  @default(true)
+  isManualOverride Boolean                  @default(false)
+  isLocked         Boolean                  @default(false)
+  notes            String?
+  placementReason  String?
+  batch            ScheduleDraftBatch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  schoolClass      SchoolClass?             @relation(fields: [classId], references: [id], onDelete: SetNull)
+  classGroup       ClassGroup?              @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  subject          Subject?                 @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher          TeacherProfile?          @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  room             Room?                    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  assignment       TeachingAssignment?      @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  ribbon           ScheduleRibbon?          @relation(fields: [ribbonId], references: [id], onDelete: SetNull)
+  ribbonItem       RibbonGroupItem?         @relation(fields: [ribbonItemId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, dayOfWeek, slotNumber])
+  @@index([classId, dayOfWeek, slotNumber])
+  @@index([teacherId, dayOfWeek, slotNumber])
+  @@index([roomId, dayOfWeek, slotNumber])
+}
+
+model ScheduleApplyHistory {
+  id                 String              @id @default(cuid())
+  batchId            String
+  schoolYear         String
+  term               String
+  classIdsJson       String
+  replacedEntryCount Int                 @default(0)
+  createdEntryCount  Int                 @default(0)
+  preservedEntryCount Int                @default(0)
+  notes              String?
+  appliedAt          DateTime            @default(now())
+  appliedById        String?
+  batch              ScheduleDraftBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  appliedBy          User?               @relation("ScheduleApplyActor", fields: [appliedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolYear, term, appliedAt])
 }
 
 model ScheduleChangeLog {

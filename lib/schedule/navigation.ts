@@ -2,30 +2,18 @@ export type ScheduleSectionKey =
   | "overview"
   | "grid"
   | "generator"
-  | "manual"
-  | "conflicts"
-  | "replacements"
-  | "teachers"
-  | "rooms"
-  | "time-slots"
-  | "templates"
-  | "change-log";
+  | "resources"
+  | "conflicts";
 
 export const scheduleSectionItems: Array<{
   key: ScheduleSectionKey;
   href: string;
 }> = [
   { key: "overview", href: "/admin/schedule" },
-  { key: "grid", href: "/admin/schedule/grid" },
   { key: "generator", href: "/admin/schedule/generator" },
-  { key: "manual", href: "/admin/schedule/manual" },
-  { key: "conflicts", href: "/admin/schedule/conflicts" },
-  { key: "replacements", href: "/admin/schedule/replacements" },
-  { key: "teachers", href: "/admin/schedule/teachers" },
-  { key: "rooms", href: "/admin/schedule/rooms" },
-  { key: "time-slots", href: "/admin/schedule/time-slots" },
-  { key: "templates", href: "/admin/schedule/templates" },
-  { key: "change-log", href: "/admin/schedule/change-log" }
+  { key: "grid", href: "/admin/schedule/grid" },
+  { key: "resources", href: "/admin/schedule/resources" },
+  { key: "conflicts", href: "/admin/schedule/conflicts" }
 ];
 
 export function getScheduleSectionCopy(locale: "ru" | "kz") {
@@ -49,6 +37,7 @@ export function getScheduleSectionCopy(locale: "ru" | "kz") {
         overview: "Overview",
         grid: "Grid",
         generator: "Generator",
+        resources: "Resources",
         manual: "Manual Builder",
         conflicts: "Conflicts",
         replacements: "Replacements",

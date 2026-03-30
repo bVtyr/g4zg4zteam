@@ -490,8 +490,11 @@ function mergeSummaries(parts: ImportSummary[]) {
   };
 }
 
-export function parseScheduleWorkbook(filePath: string, schoolYear = "2025-2026", term = "Q1") {
-  const workbook = XLSX.readFile(filePath, { cellDates: false });
+function parseWorkbook(
+  workbook: XLSX.WorkBook,
+  schoolYear = "2025-2026",
+  term = "Q1"
+) {
   const parts: ImportSummary[] = [];
 
   for (const sheetName of workbook.SheetNames) {
@@ -514,6 +517,20 @@ export function parseScheduleWorkbook(filePath: string, schoolYear = "2025-2026"
   }
 
   return mergeSummaries(parts);
+}
+
+export function parseScheduleWorkbook(filePath: string, schoolYear = "2025-2026", term = "Q1") {
+  const workbook = XLSX.readFile(filePath, { cellDates: false });
+  return parseWorkbook(workbook, schoolYear, term);
+}
+
+export function parseScheduleWorkbookBuffer(
+  fileBuffer: Buffer | Uint8Array,
+  schoolYear = "2025-2026",
+  term = "Q1"
+) {
+  const workbook = XLSX.read(fileBuffer, { type: "buffer", cellDates: false });
+  return parseWorkbook(workbook, schoolYear, term);
 }
 
 async function ensureUniqueUsername(tx: Prisma.TransactionClient, prefix: string) {
@@ -658,7 +675,9 @@ async function ensureRoom(tx: Prisma.TransactionClient, roomName: string | null)
 }
 
 export async function importScheduleWorkbook(input: {
-  filePath: string;
+  filePath?: string;
+  fileBuffer?: Buffer | Uint8Array;
+  fileName?: string;
   schoolYear?: string;
   term?: string;
   actorUserId?: string;
@@ -666,7 +685,14 @@ export async function importScheduleWorkbook(input: {
 }) {
   const schoolYear = input.schoolYear ?? "2025-2026";
   const term = input.term ?? "Q1";
-  const parsed = parseScheduleWorkbook(input.filePath, schoolYear, term);
+  const parsed = input.fileBuffer
+    ? parseScheduleWorkbookBuffer(input.fileBuffer, schoolYear, term)
+    : input.filePath
+      ? parseScheduleWorkbook(input.filePath, schoolYear, term)
+      : (() => {
+          throw new Error("IMPORT_SOURCE_REQUIRED");
+        })();
+  const importSource = input.fileName ?? input.filePath ?? "uploaded-workbook";
 
   if (input.dryRun) {
     return {
@@ -688,7 +714,7 @@ export async function importScheduleWorkbook(input: {
         dryRun: false,
         triggeredById: input.actorUserId ?? null,
         totalRequests: parsed.templates.length,
-        importSource: input.filePath,
+        importSource,
         notes: `Imported from workbook (${parsed.sheets.join(", ")})`
       }
     });
@@ -834,7 +860,8 @@ export async function importScheduleWorkbook(input: {
       templateCount: parsed.templates.length,
       timeSlotCount: parsed.timeSlots.length,
       warnings: parsed.warnings,
-      sheets: parsed.sheets
+      sheets: parsed.sheets,
+      importSource
     };
   });
 }

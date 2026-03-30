@@ -9,7 +9,7 @@ import { addDays, startOfWeek } from "date-fns";
 import { hashPassword } from "@/lib/auth/password";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { validateScheduleConflicts } from "@/lib/schedule/module-engine";
+import { validateScheduleConflicts } from "@/lib/schedule/conflict-analysis";
 import { SLOT_TEMPLATES, getSlotTemplate } from "@/lib/schedule/slot-templates";
 
 export class ScheduleConflictError extends Error {

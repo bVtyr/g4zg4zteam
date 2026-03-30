@@ -765,7 +765,7 @@ export async function generateInitialSchedule(input?: {
         }
       }),
       prisma.room.findMany({ where: { isActive: true } }),
-      prisma.teacherAvailability.findMany({ where: { teacher: { isActive: true } } }),
+      prisma.teacherAvailability.findMany({ where: { teacher: { is: { isActive: true } } } }),
       prisma.roomAvailability.findMany(),
       prisma.teachingAssignment.findMany({
         select: { teacherId: true, classId: true, subjectId: true }

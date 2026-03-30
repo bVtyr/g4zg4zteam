@@ -201,6 +201,12 @@ export function DashboardShell({
               <div className="mt-5 flex flex-wrap gap-2">
                 {scheduleSectionItems.map((item) => {
                   const active = item.href === "/admin/schedule" ? currentPath === item.href : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+                  const label =
+                    item.key === "resources"
+                      ? locale === "kz"
+                        ? "Resources"
+                        : "Ресурсы"
+                      : scheduleSectionCopy[item.key];
                   return (
                     <Link
                       key={item.href}
@@ -211,7 +217,7 @@ export function DashboardShell({
                       )}
                     >
                       <CalendarDays className="h-4 w-4" />
-                      {scheduleSectionCopy[item.key]}
+                      {label}
                     </Link>
                   );
                 })}
