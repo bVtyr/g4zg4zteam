@@ -34,6 +34,8 @@ type MockIdentity = {
   refreshToken: string;
 };
 
+type JsonRecord = Record<string, unknown>;
+
 async function fetchJson<T>(url: string, init: RequestInit) {
   const timeoutMs = Number(process.env.BILIMCLASS_TIMEOUT_MS ?? "15000");
   const controller = new AbortController();
@@ -57,26 +59,119 @@ async function fetchJson<T>(url: string, init: RequestInit) {
 }
 
 function unwrapArrayPayload<T>(
-  payload: T[] | { data?: T[]; items?: T[]; result?: T[] },
-  label: string
+  payload: unknown,
+  label: string,
+  predicate?: (value: unknown) => boolean
 ) {
   if (Array.isArray(payload)) {
-    return payload;
+    return predicate ? payload.filter(predicate) as T[] : payload as T[];
   }
 
-  if (Array.isArray(payload.data)) {
-    return payload.data;
+  const queue: unknown[] = [payload];
+  const visited = new Set<unknown>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      const filtered = predicate ? current.filter(predicate) : current;
+      if (filtered.length > 0) {
+        return filtered as T[];
+      }
+      continue;
+    }
+
+    if (typeof current !== "object") {
+      continue;
+    }
+
+    for (const value of Object.values(current as JsonRecord)) {
+      if (Array.isArray(value)) {
+        const filtered = predicate ? value.filter(predicate) : value;
+        if (filtered.length > 0) {
+          return filtered as T[];
+        }
+      } else if (value && typeof value === "object") {
+        queue.push(value);
+      }
+    }
   }
 
-  if (Array.isArray(payload.items)) {
-    return payload.items;
+  const topLevelKeys =
+    payload && typeof payload === "object" ? Object.keys(payload as JsonRecord).join(", ") : typeof payload;
+  throw new Error(`BilimClass ${label} response is not an array payload. Keys: ${topLevelKeys}`);
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizePeriodType(value: unknown): "quarter" | "halfyear" | null {
+  if (typeof value !== "string") {
+    return null;
   }
 
-  if (Array.isArray(payload.result)) {
-    return payload.result;
+  const normalized = value.trim().toLowerCase();
+  if (["quarter", "q", "term", "четверть", "toqsan"].includes(normalized)) {
+    return "quarter";
   }
 
-  throw new Error(`BilimClass ${label} response is not an array payload`);
+  if (["halfyear", "half-year", "half_year", "semester", "semestr", "полугодие", "жартыжылдық"].includes(normalized)) {
+    return "halfyear";
+  }
+
+  return null;
+}
+
+function normalizePeriodEntry(value: unknown): BilimClassPeriod | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const periodRaw = value.period ?? value.number ?? value.periodNumber ?? value.id;
+  const period = typeof periodRaw === "number" ? periodRaw : Number(periodRaw);
+  const periodType =
+    normalizePeriodType(value.periodType) ??
+    normalizePeriodType(value.type) ??
+    normalizePeriodType(value.attestationType);
+
+  if (!Number.isFinite(period) || !periodType) {
+    return null;
+  }
+
+  const title =
+    typeof value.title === "string"
+      ? value.title
+      : typeof value.name === "string"
+        ? value.name
+        : typeof value.label === "string"
+          ? value.label
+          : `${periodType === "quarter" ? "Quarter" : "Half-year"} ${period}`;
+
+  const hasDataRaw = value.hasData ?? value.isFilled ?? value.filled ?? value.hasDiary ?? value.available ?? true;
+
+  return {
+    period,
+    periodType,
+    title,
+    hasData: Boolean(hasDataRaw)
+  };
+}
+
+function isPeriodCandidate(value: unknown) {
+  return normalizePeriodEntry(value) !== null;
+}
+
+function isSubjectCandidate(value: unknown) {
+  return (
+    isRecord(value) &&
+    typeof value.eduSubjectUuid === "string" &&
+    (Array.isArray(value.schedules) || isRecord(value.periodInfo))
+  );
 }
 
 function hashSeed(value: string) {
@@ -194,14 +289,18 @@ export class LiveBilimClassAdapter implements BilimClassAdapter {
   }
 
   getPeriods(args: { schoolId: number; eduYear: number; token?: string }) {
-    return fetchJson<BilimClassPeriod[] | { data?: BilimClassPeriod[]; items?: BilimClassPeriod[]; result?: BilimClassPeriod[] }>(
+    return fetchJson<unknown>(
       `${this.baseUrl}/api/v4/os/clientoffice/diary/periods?schoolId=${args.schoolId}&eduYear=${args.eduYear}`,
       {
         headers: {
           Authorization: `Bearer ${args.token ?? ""}`
         }
       }
-    ).then((payload) => unwrapArrayPayload(payload, "periods"));
+    ).then((payload) =>
+      unwrapArrayPayload<unknown>(payload, "periods", isPeriodCandidate)
+        .map((item) => normalizePeriodEntry(item))
+        .filter((item): item is BilimClassPeriod => item !== null)
+    );
   }
 
   getYear(args: { schoolId: number; eduYear: number; token?: string }) {
@@ -223,16 +322,14 @@ export class LiveBilimClassAdapter implements BilimClassAdapter {
     groupId: number;
     token?: string;
   }) {
-    return fetchJson<
-      BilimClassSubjectDetail[] | { data?: BilimClassSubjectDetail[]; items?: BilimClassSubjectDetail[]; result?: BilimClassSubjectDetail[] }
-    >(
+    return fetchJson<unknown>(
       `${this.baseUrl}/api/v4/os/clientoffice/diary/subjects?schoolId=${args.schoolId}&eduYear=${args.eduYear}&period=${args.period}&periodType=${args.periodType}&groupId=${args.groupId}`,
       {
         headers: {
           Authorization: `Bearer ${args.token ?? ""}`
         }
       }
-    ).then((payload) => unwrapArrayPayload(payload, "subjects"));
+    ).then((payload) => unwrapArrayPayload<BilimClassSubjectDetail>(payload, "subjects", isSubjectCandidate));
   }
 }
 
