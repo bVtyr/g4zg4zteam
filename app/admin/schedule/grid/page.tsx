@@ -1,8 +1,8 @@
 ﻿import { Role } from "@prisma/client";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { PageSection } from "@/components/layout/page-section";
+import { InteractiveScheduleGrid } from "@/components/schedule/interactive-schedule-grid";
 import { ScheduleResponsiveFilters } from "@/components/schedule/schedule-filters-responsive";
-import { ScheduleResponsiveGrid } from "@/components/schedule/schedule-responsive-grid";
 import { getCurrentLocale } from "@/lib/i18n/server";
 import { schedulePageCopy } from "@/lib/schedule/copy";
 import { requirePageRole } from "@/lib/services/portal-data";
@@ -70,13 +70,15 @@ export default async function AdminScheduleGridPage({
           }}
         />
       </PageSection>
-      <PageSection title={t.table}>
-        <ScheduleResponsiveGrid
-          locale={locale}
-          entries={filteredEntries}
-          timeSlots={workspace.timeSlots}
-          focusDay={selectedDay ?? null}
-        />
+      <PageSection
+        title={t.table}
+        description={
+          locale === "kz"
+            ? "Фильтрленген сабақтарды тордан бірден жылжытуға болады. Әр drop алдында конфликт тексеруі жүреді."
+            : "Отфильтрованные уроки можно переносить прямо из сетки. Перед каждым сохранением выполняется preview-проверка конфликтов."
+        }
+      >
+        <InteractiveScheduleGrid locale={locale} entries={filteredEntries} timeSlots={workspace.timeSlots} />
       </PageSection>
     </DashboardShell>
   );

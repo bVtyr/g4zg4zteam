@@ -1,4 +1,4 @@
-import { getScheduleDayLabels } from "@/lib/schedule/copy";
+﻿import { getScheduleDayLabels } from "@/lib/schedule/copy";
 
 function FilterFields({
   copy,
@@ -131,20 +131,20 @@ export function ScheduleResponsiveFilters({
   const copy =
     locale === "kz"
       ? {
-          apply: "Сүзгіні қолдану",
+          apply: "С?згіні ?олдану",
           classLabel: "Сынып",
-          teacherLabel: "Мұғалім",
+          teacherLabel: "М??алім",
           roomLabel: "Кабинет",
-          dayLabel: "Күн",
-          all: "Барлығы",
+          dayLabel: "К?н",
+          all: "Барлы?ы",
           reset: "Тазалау",
-          mobileTitle: "Фильтрлер",
-          desktopTitle: "Сүзгі құралдары",
-          desktopHint: "Ноутбук пен desktop-та toolbar ықшам көрінеді, ал телефонда фильтрлер жеке жиналмалы панельге ауысады.",
-          activeFilters: "Белсенді сүзгілер"
+          mobileTitle: "С?згілер",
+          desktopTitle: "Кесте с?згілері",
+          desktopHint: "Сынып, м??алім, кабинет немесе к?н бойынша к?ріністі тарылты?ыз.",
+          activeFilters: "Белсенді с?згілер"
         }
       : {
-          apply: "Применить фильтры",
+          apply: "Применить",
           classLabel: "Класс",
           teacherLabel: "Учитель",
           roomLabel: "Кабинет",
@@ -152,8 +152,8 @@ export function ScheduleResponsiveFilters({
           all: "Все",
           reset: "Сбросить",
           mobileTitle: "Фильтры",
-          desktopTitle: "Панель фильтров",
-          desktopHint: "На ноутбуке и desktop фильтры работают как компактный toolbar, на телефоне переходят в отдельный раскрывающийся блок.",
+          desktopTitle: "Фильтры расписания",
+          desktopHint: "Сузьте сетку по классу, учителю, кабинету или конкретному дню.",
           activeFilters: "Активные фильтры"
         };
 
@@ -216,3 +216,4 @@ export function ScheduleResponsiveFilters({
     </form>
   );
 }
+

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Role, ScheduleEntryStatus, ScheduleEntryType } from "@prisma/client";
 import { requireSession } from "@/lib/auth/session";
+import { notifyAffectedUsers } from "@/lib/schedule/module-engine";
+import { createAuditLog } from "@/lib/services/audit-log-service";
 import {
   ScheduleConflictError,
   cancelScheduleEntry,
@@ -29,7 +31,7 @@ const schema = z.object({
 });
 
 export async function PATCH(request: Request, context: { params: Promise<{ entryId: string }> }) {
-  await requireSession([Role.admin]);
+  const session = await requireSession([Role.admin]);
   const { entryId } = await context.params;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -41,6 +43,28 @@ export async function PATCH(request: Request, context: { params: Promise<{ entry
     if (parsed.data.status === ScheduleEntryStatus.cancelled) {
       await cancelScheduleEntry(entryId);
     }
+
+    if (parsed.data.classId) {
+      await notifyAffectedUsers({
+        title: "Schedule updated",
+        body: `${parsed.data.title} moved to a new slot.`,
+        classId: parsed.data.classId,
+        scheduleEntryId: updated.id
+      });
+    }
+
+    await createAuditLog({
+      eventType: "admin_action",
+      action: "admin-schedule-entry-updated",
+      status: "success",
+      actorUserId: session.id,
+      actorRole: session.role,
+      entityType: "schedule-entry",
+      entityId: updated.id,
+      message: `Admin updated schedule entry ${updated.title}.`,
+      metadata: parsed.data
+    });
+
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof ScheduleConflictError) {

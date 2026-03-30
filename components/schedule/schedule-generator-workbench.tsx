@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,9 @@ export function ScheduleGeneratorWorkbench({
   classes,
   maxSlotCount,
   timeSlots,
-  initialDraft
+  initialDraft,
+  initialDraftComparison,
+  initialDraftHealth
 }: {
   locale: "ru" | "kz";
   initialFilters: {
@@ -62,6 +64,14 @@ export function ScheduleGeneratorWorkbench({
   maxSlotCount: number;
   timeSlots: Array<{ slotNumber: number; startTime: string; endTime: string }>;
   initialDraft: DraftBatch | null;
+  initialDraftComparison: {
+    moved: number;
+    unchanged: number;
+    added: number;
+    removed: number;
+    preserved: number;
+  } | null;
+  initialDraftHealth: Record<string, number> | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -108,100 +118,69 @@ export function ScheduleGeneratorWorkbench({
   );
   const [draft, setDraft] = useState<DraftBatch | null>(initialDraft);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const visibleDraftComparison =
+    draft && initialDraft && draft.id === initialDraft.id ? initialDraftComparison : null;
+  const visibleDraftHealth =
+    draft && initialDraft && draft.id === initialDraft.id ? initialDraftHealth : null;
 
-  const copy =
-    locale === "kz"
-      ? {
-          generate: "Черновик құру",
-          generating: "Генерация жүріп жатыр...",
-          apply: "Кестені барлық сыныптарға қолдану",
-          export: "Excel-ге экспорттау",
-          selectAll: "Барлығын таңдау",
-          clear: "Тазалау",
-          advanced: "Кеңейтілген баптаулар",
-          import: "Excel импорт",
-          importHint: "Қосымша әрекет ретінде бар кестені жүктеуге болады.",
-          importRun: "Импорттау",
-          successGenerate: "Черновик жаңартылды.",
-          successApply: "Кесте жүйеге қолданылды.",
-          successImport: "Excel импорт аяқталды.",
-          failed: "Әрекетті орындау мүмкін болмады.",
-          schoolYear: "Оқу жылы",
-          term: "Тоқсан / term",
-          profile: "Қоңырау торы",
-          days: "Қолданылатын күндер",
-          lessons: "Күніне максимум сабақ",
-          manualLocked: "Locked / manual жазбаларды сақтау",
-          optimization: "Оптимизация профилі",
-          autoApply: "Сәтті болса бірден қолдану",
-          backtracking: "Backtracking лимиті",
-          late: "Кіші сыныптар үшін кеш слоттардан қашу",
-          roomStability: "Кабинет тұрақтылығын сақтау",
-          sameSubject: "Бір күнде бір пәнді қайталауға рұқсат",
-          summary: "Генерация нәтижесі",
-          notes: "Ескертпелер",
-          classes: "Қамтылатын сыныптар",
-          noDraft: "Генерациядан кейін нәтиже осында көрінеді."
-        }
-      : {
-          generate: "Сгенерировать черновик",
-          generating: "Генерация выполняется...",
-          apply: "Применить расписание ко всем классам",
-          export: "Экспортировать в Excel",
-          selectAll: "Выбрать все",
-          clear: "Очистить",
-          advanced: "Расширенные настройки",
-          import: "Импорт Excel",
-          importHint: "Как вторичное действие можно загрузить существующее расписание из файла.",
-          importRun: "Импортировать",
-          successGenerate: "Черновик обновлён.",
-          successApply: "Расписание применено в систему.",
-          successImport: "Импорт Excel завершён.",
-          failed: "Не удалось выполнить действие.",
-          schoolYear: "Учебный год",
-          term: "Четверть / term",
-          profile: "Сетка звонков",
-          days: "Используемые дни",
-          lessons: "Максимум уроков в день",
-          manualLocked: "Учитывать locked / manual записи",
-          optimization: "Профиль оптимизации",
-          autoApply: "Сразу применить при успехе",
-          backtracking: "Лимит backtracking",
-          late: "Избегать поздних уроков для младших классов",
-          roomStability: "Сохранять стабильность кабинетов",
-          sameSubject: "Разрешить повтор предмета в один день",
-          summary: "Результат генерации",
-          notes: "Примечания",
-          classes: "Какие классы включать",
-          noDraft: "После генерации здесь появится результат."
-        };
+  const copy = {
+    generate: "Собрать draft",
+    generating: "Идёт генерация...",
+    apply: "Опубликовать расписание",
+    export: "Экспорт в Excel",
+    selectAll: "Выбрать все",
+    clear: "Очистить",
+    advanced: "Расширенные настройки",
+    import: "Импорт из Excel",
+    importHint: "При необходимости можно загрузить существующее расписание из файла.",
+    importRun: "Импортировать",
+    successGenerate: "Draft обновлён.",
+    successApply: "Расписание опубликовано в системе.",
+    successImport: "Импорт Excel завершён.",
+    failed: "Не удалось выполнить действие.",
+    schoolYear: "Учебный год",
+    term: "Период",
+    profile: "Профиль слотов",
+    days: "Рабочие дни",
+    lessons: "Максимум уроков в день",
+    manualLocked: "Сохранять locked и manual записи",
+    optimization: "Профиль оптимизации",
+    autoApply: "Сразу публиковать при успехе",
+    backtracking: "Лимит backtracking",
+    late: "Снижать поздние слоты у младших классов",
+    roomStability: "Сохранять стабильность кабинетов",
+    sameSubject: "Разрешить повтор предмета в один день",
+    summary: "Результат draft",
+    notes: "Примечания",
+    classes: "Классы в генерации",
+    noDraft: "После генерации здесь появится preview расписания."
+  };
 
-  const dayLabels = locale === "kz" ? ["Дс", "Сс", "Ср", "Бс", "Жм"] : ["Пн", "Вт", "Ср", "Чт", "Пт"];
+  const dayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт"];
   const profileOptions = [
     {
       value: "database",
-      label: locale === "kz" ? "Белсенді тор" : "Активная сетка"
+      label: "Активная сетка"
     },
     {
       value: "default",
-      label: locale === "kz" ? "Негізгі тор" : "Базовая сетка"
+      label: "Базовая сетка"
     }
   ];
   const optimizationOptions = [
     {
       value: "balanced",
-      label: locale === "kz" ? "Теңгерілген" : "Сбалансированный"
+      label: "Сбалансированный"
     },
     {
       value: "teacher_friendly",
-      label: locale === "kz" ? "Мұғалімге ыңғайлы" : "Щадящий для учителей"
+      label: "Щадящий для учителей"
     },
     {
       value: "compact",
-      label: locale === "kz" ? "Тығыз" : "Компактный"
+      label: "Компактный"
     }
   ];
-
   function toggleClass(classId: string) {
     setSelectedClassIds((current) =>
       current.includes(classId) ? current.filter((item) => item !== classId) : [...current, classId]
@@ -566,22 +545,83 @@ export function ScheduleGeneratorWorkbench({
           <>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Placed</div>
+                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                  {"Поставлено"}
+                </div>
                 <div className="mt-2 text-3xl font-semibold text-ink">{draft.statistics?.placedLessons ?? 0}</div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Preserved</div>
+                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                  {"Сохранено"}
+                </div>
                 <div className="mt-2 text-3xl font-semibold text-ink">{draft.statistics?.preservedLessons ?? 0}</div>
               </div>
               <div className="rounded-2xl border border-danger/15 bg-danger/[0.03] p-4">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Conflicts</div>
+                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                  {"Конфликты"}
+                </div>
                 <div className="mt-2 text-3xl font-semibold text-ink">{draft.conflicts.length}</div>
               </div>
               <div className="rounded-2xl border border-warning/20 bg-warning/[0.06] p-4">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Unplaced</div>
+                <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                  {"Неразмещено"}
+                </div>
                 <div className="mt-2 text-3xl font-semibold text-ink">{draft.unplaced.length}</div>
               </div>
             </div>
+
+            {visibleDraftComparison ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                    {"Переносы"}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-ink">{visibleDraftComparison.moved}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                    {"Без изменений"}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-ink">{visibleDraftComparison.unchanged}</div>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                    {"Новые"}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-ink">{visibleDraftComparison.added}</div>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                    {"Уходят"}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-ink">{visibleDraftComparison.removed}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                    {"Защищено"}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-ink">{visibleDraftComparison.preserved}</div>
+                </div>
+              </div>
+            ) : null}
+
+            {visibleDraftHealth ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  ["critical", "Критичные", "border-rose-200 bg-rose-50"],
+                  ["high", "Высокие", "border-orange-200 bg-orange-50"],
+                  ["medium", "Средние", "border-amber-200 bg-amber-50"],
+                  ["low", "Низкие", "border-slate-200 bg-white"]
+                ].map(([key, label, tone]) => (
+                  <div key={key} className={`rounded-2xl border p-4 ${tone}`}>
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">{label}</div>
+                    <div className="mt-2 text-2xl font-semibold text-ink">
+                      {visibleDraftHealth[key as keyof typeof visibleDraftHealth] ?? 0}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
             <ScheduleIssueStack locale={locale} conflicts={draft.conflicts} unplaced={draft.unplaced} />
 
@@ -605,3 +645,8 @@ export function ScheduleGeneratorWorkbench({
     </div>
   );
 }
+
+
+
+
+

@@ -1,4 +1,4 @@
-import { getScheduleDayLabels, getScheduleEntryTypeLabel } from "@/lib/schedule/copy";
+﻿import { getScheduleDayLabels, getScheduleEntryTypeLabel } from "@/lib/schedule/copy";
 import { cn } from "@/lib/utils";
 
 type GridEntry = {
@@ -79,8 +79,8 @@ function getEntryBadges(entry: GridEntry, locale: "ru" | "kz", mode: BoardMode) 
       key: "conflict",
       label:
         locale === "kz"
-          ? `Қақтығыс ${entry.conflicts.length}`
-          : `Конфликт ${entry.conflicts.length}`,
+          ? `ТљР°Т›С‚С‹Т“С‹СЃ ${entry.conflicts.length}`
+          : `РљРѕРЅС„Р»РёРєС‚ ${entry.conflicts.length}`,
       className: "bg-danger/[0.12] text-danger"
     });
   }
@@ -160,8 +160,8 @@ function renderEntryCard(
           )}
         >
           {locale === "kz"
-            ? `${entry.durationSlots} слот`
-            : `${entry.durationSlots} слота`}
+            ? `${entry.durationSlots} СЃР»РѕС‚`
+            : `${entry.durationSlots} СЃР»РѕС‚Р°`}
         </div>
       ) : null}
       {mode === "admin" && entry.conflicts?.length ? (
@@ -202,8 +202,8 @@ export function ScheduleResponsiveGrid({
       dayOfWeek: index + 1
     }))
     .filter((day) => (focusDay ? day.dayOfWeek === focusDay : true));
-  const emptyLabel = locale === "kz" ? "Бос" : "Пусто";
-  const continuedLabel = locale === "kz" ? "Жалғасуы" : "Продолжение";
+  const emptyLabel = "Пусто";
+  const continuedLabel = "Продолжение";
   const showEmptySlotsOnMobile = mode === "kiosk" || Boolean(focusDay);
 
   return (
@@ -467,3 +467,4 @@ export function ScheduleResponsiveGrid({
     </div>
   );
 }
+

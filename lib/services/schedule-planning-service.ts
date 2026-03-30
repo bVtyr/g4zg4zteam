@@ -9,6 +9,152 @@ import { getLatestScheduleDraftBatch } from "@/lib/schedule/draft-batch";
 import { getSlotGrid } from "@/lib/schedule/generation-context";
 import { prisma } from "@/lib/db/prisma";
 
+function getEntryClassId(entry: {
+  classId?: string | null;
+  classGroup?: { classId?: string | null } | null;
+}) {
+  return entry.classId ?? entry.classGroup?.classId ?? null;
+}
+
+function buildEntryIdentityKey(entry: {
+  classId?: string | null;
+  classGroupId?: string | null;
+  subjectId?: string | null;
+  teacherId?: string | null;
+  assignmentId?: string | null;
+  title?: string | null;
+  durationSlots?: number | null;
+}) {
+  return [
+    entry.classId ?? "class:none",
+    entry.classGroupId ?? "group:none",
+    entry.subjectId ?? "subject:none",
+    entry.teacherId ?? "teacher:none",
+    entry.assignmentId ?? "assignment:none",
+    entry.title ?? "title:none",
+    entry.durationSlots ?? 1
+  ].join("|");
+}
+
+function buildEntryPositionKey(entry: {
+  dayOfWeek?: number | null;
+  slotNumber?: number | null;
+  slotIndex?: number | null;
+  roomId?: string | null;
+}) {
+  return [
+    entry.dayOfWeek ?? "day:none",
+    entry.slotNumber ?? entry.slotIndex ?? "slot:none",
+    entry.roomId ?? "room:none"
+  ].join("|");
+}
+
+function summarizeDraftChanges(input: {
+  latestDraft:
+    | {
+        classIds: string[];
+        entries: Array<{
+          source: string;
+          title: string;
+          classId: string | null;
+          classGroupId: string | null;
+          subjectId: string | null;
+          teacherId: string | null;
+          assignmentId: string | null;
+          dayOfWeek: number;
+          slotNumber: number | null;
+          slotIndex: number | null;
+          roomId: string | null;
+          durationSlots: number | null;
+        }>;
+      }
+    | null;
+  entries: Array<{
+    id: string;
+    title: string;
+    classId: string | null;
+    classGroupId: string | null;
+    subjectId: string | null;
+    teacherId: string | null;
+    assignmentId: string | null;
+    dayOfWeek: number;
+    slotNumber: number | null;
+    slotIndex: number | null;
+    roomId: string | null;
+    durationSlots: number | null;
+    isLocked: boolean;
+    isManualOverride: boolean;
+    classGroup?: { classId: string } | null;
+  }>;
+}) {
+  if (!input.latestDraft) {
+    return null;
+  }
+
+  const selectedClassSet = new Set(input.latestDraft.classIds);
+  const currentReplaceable = input.entries.filter((entry) => {
+    const classId = getEntryClassId(entry);
+    return classId && selectedClassSet.has(classId) && !entry.isLocked && !entry.isManualOverride;
+  });
+  const draftGenerated = input.latestDraft.entries.filter((entry) => entry.source === "generated");
+  const currentBuckets = new Map<
+    string,
+    Array<{
+      title: string;
+      dayOfWeek: number;
+      slotNumber: number | null;
+      slotIndex: number | null;
+      roomId: string | null;
+    }>
+  >();
+
+  for (const entry of currentReplaceable) {
+    const key = buildEntryIdentityKey(entry);
+    const bucket = currentBuckets.get(key) ?? [];
+    bucket.push(entry);
+    currentBuckets.set(key, bucket);
+  }
+
+  let unchanged = 0;
+  let moved = 0;
+  let added = 0;
+
+  for (const entry of draftGenerated) {
+    const key = buildEntryIdentityKey(entry);
+    const bucket = currentBuckets.get(key) ?? [];
+    const exactIndex = bucket.findIndex(
+      (candidate) => buildEntryPositionKey(candidate) === buildEntryPositionKey(entry)
+    );
+
+    if (exactIndex >= 0) {
+      unchanged += 1;
+      bucket.splice(exactIndex, 1);
+      currentBuckets.set(key, bucket);
+      continue;
+    }
+
+    if (bucket.length) {
+      moved += 1;
+      bucket.shift();
+      currentBuckets.set(key, bucket);
+      continue;
+    }
+
+    added += 1;
+  }
+
+  const removed = [...currentBuckets.values()].reduce((sum, bucket) => sum + bucket.length, 0);
+  const preserved = input.latestDraft.entries.filter((entry) => entry.source !== "generated").length;
+
+  return {
+    moved,
+    unchanged,
+    added,
+    removed,
+    preserved
+  };
+}
+
 export async function getScheduleAdminWorkspace(input?: {
   schoolYear?: string;
   term?: string;
@@ -120,6 +266,19 @@ export async function getScheduleAdminWorkspace(input?: {
 
   const entryConflictMap = buildConflictEntryMap(conflicts);
   const timeSlots = await getSlotGrid("database");
+  const draftComparison = summarizeDraftChanges({
+    latestDraft,
+    entries
+  });
+  const draftHealth = latestDraft
+    ? latestDraft.conflicts.reduce(
+        (summary: Record<string, number>, conflict: { severity: string }) => {
+          summary[conflict.severity] = (summary[conflict.severity] ?? 0) + 1;
+          return summary;
+        },
+        { critical: 0, high: 0, medium: 0, low: 0 } as Record<string, number>
+      )
+    : null;
 
   return {
     schoolYear,
@@ -150,6 +309,8 @@ export async function getScheduleAdminWorkspace(input?: {
     conflictSummary: summarizeConflictsByType(conflicts),
     conflicts,
     latestDraft,
+    draftComparison,
+    draftHealth,
     latestApply
   };
 }

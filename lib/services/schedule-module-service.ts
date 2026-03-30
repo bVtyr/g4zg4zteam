@@ -124,7 +124,7 @@ async function loadConflictContext(input: {
   };
 }
 
-async function assertEntryConflicts(input: EntryInput & { ignoreEntryId?: string }) {
+async function getEntryConflicts(input: EntryInput & { ignoreEntryId?: string }) {
   const schoolYear = input.schoolYear ?? "2025-2026";
   const term = input.term ?? "Q1";
   const context = await loadConflictContext({
@@ -175,6 +175,12 @@ async function assertEntryConflicts(input: EntryInput & { ignoreEntryId?: string
       )
     }
   );
+
+  return conflicts;
+}
+
+async function assertEntryConflicts(input: EntryInput & { ignoreEntryId?: string }) {
+  const conflicts = await getEntryConflicts(input);
 
   if (conflicts.length && !input.overrideConflicts) {
     throw new ScheduleConflictError("Schedule conflicts detected.", conflicts);
@@ -255,6 +261,25 @@ export async function updateManualScheduleEntry(entryId: string, input: EntryInp
       isLocked: input.isLocked ?? false
     }
   });
+}
+
+export async function previewScheduleEntryUpdate(entryId: string, input: EntryInput) {
+  const schoolYear = input.schoolYear ?? "2025-2026";
+  const term = input.term ?? "Q1";
+  const timeRange = await getTimeRange(input.slotNumber, input.durationSlots ?? 1);
+  const conflicts = await getEntryConflicts({
+    ...input,
+    schoolYear,
+    term,
+    ignoreEntryId: entryId
+  });
+
+  return {
+    ok: conflicts.length === 0,
+    conflicts,
+    startTime: timeRange.startTime,
+    endTime: timeRange.endTime
+  };
 }
 
 export async function deleteScheduleEntry(entryId: string) {

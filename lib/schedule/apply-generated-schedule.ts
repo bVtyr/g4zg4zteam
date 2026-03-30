@@ -7,6 +7,7 @@ import { addDays, startOfWeek } from "date-fns";
 import { prisma } from "@/lib/db/prisma";
 import { getCriticalConflicts, validateScheduleConflicts } from "@/lib/schedule/conflict-analysis";
 import { getScheduleDraftBatchDetail } from "@/lib/schedule/draft-batch";
+import { notifyAffectedUsers } from "@/lib/schedule/module-engine";
 
 export class DraftApplyConflictError extends Error {
   conflicts: ReturnType<typeof validateScheduleConflicts>;
@@ -37,7 +38,7 @@ export async function applyGeneratedScheduleBatch(input: {
   const batch = await getScheduleDraftBatchDetail(input.batchId);
   const selectedClassSet = toSelectedClassSet(batch.classIds);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const [currentEntries, teacherAvailability, roomAvailability, rooms, assignments, timeSlots] =
       await Promise.all([
         tx.scheduleEntry.findMany({
@@ -257,4 +258,16 @@ export async function applyGeneratedScheduleBatch(input: {
       conflicts
     };
   });
+
+  await Promise.allSettled(
+    batch.classIds.map((classId) =>
+      notifyAffectedUsers({
+        title: "Schedule published",
+        body: "A new timetable draft has been applied. Check the updated slots and replacements.",
+        classId
+      })
+    )
+  );
+
+  return result;
 }

@@ -1,4 +1,4 @@
-import { MetricCard } from "@/components/layout/page-section";
+﻿import { MetricCard } from "@/components/layout/page-section";
 import { formatDateLabel } from "@/lib/utils";
 
 export function ScheduleOverviewMetrics({
@@ -19,32 +19,32 @@ export function ScheduleOverviewMetrics({
     locale === "kz"
       ? {
           classes: "Сыныптар",
-          entries: "Белсенді жазбалар",
-          conflicts: "Қақтығыстар",
+          entries: "Белсенді саба?тар",
+          conflicts: "Конфликттер",
           unplaced: "Орналаспады",
-          generation: "Соңғы генерация",
-          apply: "Соңғы қолдану",
-          classesHint: "Генерацияға қолжетімді сыныптар",
-          entriesHint: "Жүйедегі белсенді сабақтар",
-          conflictsHint: "Жариялауға дейін тексеру керек",
-          unplacedHint: "Қолмен қарауды қажет етеді",
-          generationHint: "Соңғы draft құрылған уақыт",
-          applyHint: "Жүйеге соңғы рет жарияланған уақыт",
+          generation: "Со??ы draft",
+          apply: "Со??ы publish",
+          classesHint: "Генерация?а кіретін сыныптар",
+          entriesHint: "Ж?йедегі белсенді саба?тар",
+          conflictsHint: "Жариялау?а дейін тексерілетін блоктар",
+          unplacedHint: "?олмен ?арауды ?ажет етеді",
+          generationHint: "Со??ы draft жинал?ан уа?ыт",
+          applyHint: "Кесте со??ы рет ?ашан жарияланды",
           none: "—"
         }
       : {
-          classes: "Всего классов",
-          entries: "Активные записи",
+          classes: "Классы",
+          entries: "Активные уроки",
           conflicts: "Конфликты",
-          unplaced: "Неразмещённые уроки",
-          generation: "Последняя генерация",
-          apply: "Последнее применение",
-          classesHint: "Классы, доступные для генерации",
-          entriesHint: "Активные уроки в системе",
+          unplaced: "Неразмещённые",
+          generation: "Последний draft",
+          apply: "Последняя публикация",
+          classesHint: "Классы, включённые в генерацию",
+          entriesHint: "Активные занятия в системе",
           conflictsHint: "Нужно проверить до публикации",
           unplacedHint: "Потребуют ручной разбор",
           generationHint: "Когда был собран последний draft",
-          applyHint: "Когда расписание публиковали в систему",
+          applyHint: "Когда расписание последний раз публиковали",
           none: "—"
         };
 
@@ -77,3 +77,4 @@ export function ScheduleOverviewMetrics({
     </div>
   );
 }
+

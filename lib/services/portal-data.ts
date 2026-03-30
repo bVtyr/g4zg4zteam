@@ -9,7 +9,7 @@ import {
 } from "@prisma/client";
 import { getSessionUser, requireSession } from "@/lib/auth/session";
 import { ensureStudentBilimClassFresh, getStudentBilimClassStatus } from "@/lib/bilimclass/service";
-import { parseBreakdown, buildTeacherReport, buildWeeklySummary, calculateSubjectRisk } from "@/lib/ai/engines-advanced";
+import { parseBreakdown, buildWeeklySummary, calculateSubjectRisk } from "@/lib/ai/engines-advanced";
 import { prisma } from "@/lib/db/prisma";
 import { type Locale, translateContent, translateSubject } from "@/lib/i18n";
 import { roleLanding } from "@/lib/rbac/access";
@@ -416,6 +416,165 @@ export async function getStudentDashboardData(studentId?: string, locale: Locale
   };
 }
 
+function getTeacherRiskBand(score: number) {
+  if (score >= 70) {
+    return "urgent" as const;
+  }
+
+  if (score >= 45) {
+    return "watch" as const;
+  }
+
+  if (score >= 25) {
+    return "stable" as const;
+  }
+
+  return "strong" as const;
+}
+
+function buildTeacherRiskExplanation(
+  locale: Locale,
+  input: {
+    highestRisk: ReturnType<typeof calculateSubjectRisk> | null;
+    misses: number;
+    avgScore: number | null;
+  }
+) {
+  if (!input.highestRisk) {
+    return locale === "kz"
+      ? "Тұрақты қорытынды жасауға дерек әлі жеткіліксіз."
+      : "Пока недостаточно данных для устойчивого вывода.";
+  }
+
+  const reasons: string[] = [];
+  if ((input.avgScore ?? 100) < 70) {
+    reasons.push(
+      locale === "kz"
+        ? `орташа нәтиже ${Math.round(input.avgScore ?? 0)}%`
+        : `средний результат ${Math.round(input.avgScore ?? 0)}%`
+    );
+  }
+
+  if (input.highestRisk.trend === "declining" || input.highestRisk.trend === "critical_decline") {
+    reasons.push(locale === "kz" ? "соңғы апталарда төмендеу бар" : "есть спад за последние недели");
+  }
+
+  if (input.misses > 0) {
+    reasons.push(
+      locale === "kz"
+        ? `${input.misses} пропуск тіркелген`
+        : `${input.misses} пропуск${input.misses === 1 ? "" : input.misses < 5 ? "а" : "ов"}`
+    );
+  }
+
+  const topGap = input.highestRisk.knowledgeGaps?.[0];
+  if (topGap) {
+    reasons.push(locale === "kz" ? `негізгі олқылық: ${topGap.title}` : `ключевой пробел: ${topGap.title}`);
+  }
+
+  if (!reasons.length) {
+    reasons.push(locale === "kz" ? "көрсеткіш тұрақсыз" : "показатели нестабильны");
+  }
+
+  return `${input.highestRisk.subjectName}: ${reasons.join(", ")}.`;
+}
+
+function buildTeacherRecommendation(
+  locale: Locale,
+  input: {
+    highestRisk: ReturnType<typeof calculateSubjectRisk> | null;
+    misses: number;
+    avgScore: number | null;
+  }
+) {
+  if (!input.highestRisk) {
+    return locale === "kz"
+      ? "Тағы 1 апта бақылап, жаңа бағалар түскен соң қайта тексеріңіз."
+      : "Понаблюдайте ещё неделю и обновите вывод после новых оценок.";
+  }
+
+  const topGap = input.highestRisk.knowledgeGaps?.[0];
+  if (input.highestRisk.riskScore >= 70) {
+    return locale === "kz"
+      ? `Қысқа консультация өткізіп, ${input.highestRisk.subjectName} бойынша ${topGap?.title ?? "әлсіз тақырыпты"} жеке пысықтауға беріңіз.`
+      : `Назначьте короткую консультацию и дайте точечную отработку по теме "${topGap?.title ?? "слабая тема"}" в ${input.highestRisk.subjectName}.`;
+  }
+
+  if (input.misses >= 3) {
+    return locale === "kz"
+      ? "Қатысу жоспарын бекітіп, келесі аптада қайта тексеріңіз."
+      : "Зафиксируйте план по посещаемости и перепроверьте динамику на следующей неделе.";
+  }
+
+  if ((input.avgScore ?? 100) >= 85 && input.highestRisk.riskScore < 25) {
+    return locale === "kz"
+      ? "Күрделірек тапсырма беріп, оқушыны мықты топта ұстаңыз."
+      : "Дайте усложнённое задание и удерживайте ученика в сильной группе.";
+  }
+
+  return locale === "kz"
+    ? `Келесі сабақта ${topGap?.title ?? input.highestRisk.subjectName} бойынша қысқа бекіту жасаңыз.`
+    : `На следующем уроке сделайте короткое закрепление по теме "${topGap?.title ?? input.highestRisk.subjectName}".`;
+}
+
+function buildTeacherSummaryText(
+  locale: Locale,
+  input: {
+    classCount: number;
+    urgentCount: number;
+    watchCount: number;
+    strongCount: number;
+    attendanceConcernCount: number;
+  }
+) {
+  if (locale === "kz") {
+    return `${input.classCount} сынып бақылауда. ${input.urgentCount} оқушыға жедел араласу керек, ${input.watchCount} оқушы бақылау тобында. Қатысу тәуекелі ${input.attendanceConcernCount} оқушыда байқалды.`;
+  }
+
+  return `${input.classCount} классов в работе. ${input.urgentCount} учеников требуют быстрого вмешательства, ${input.watchCount} находятся в зоне наблюдения. По посещаемости внимание нужно ${input.attendanceConcernCount} ученикам.`;
+}
+
+function buildTeacherNarrativeReport(
+  locale: Locale,
+  input: {
+    className: string;
+    items: Array<{
+      studentName: string;
+      riskBand: "urgent" | "watch" | "stable" | "strong";
+      highestRisk: ReturnType<typeof calculateSubjectRisk> | null;
+      recommendation: string;
+      explanation: string;
+    }>;
+  }
+) {
+  const urgent = input.items.filter((item) => item.riskBand === "urgent");
+  const watch = input.items.filter((item) => item.riskBand === "watch");
+  const strong = input.items.filter((item) => item.riskBand === "strong");
+  const top = [...urgent, ...watch].slice(0, 3);
+
+  if (locale === "kz") {
+    return [
+      `${input.className}: ${strong.length} оқушы тұрақты мықты аймақта, ${urgent.length} оқушыға шұғыл араласу керек, ${watch.length} оқушы бақылауда.`,
+      top.length
+        ? `Бірінші фокус: ${top.map((item) => `${item.studentName} — ${item.explanation}`).join(" ")}`
+        : "Қазір жедел араласуды қажет ететін оқушы жоқ.",
+      top.length
+        ? `Келесі қадам: ${top.map((item) => `${item.studentName} — ${item.recommendation}`).join(" ")}`
+        : "Класс тұрақты режимде жүріп жатыр."
+    ].join(" ");
+  }
+
+  return [
+    `${input.className}: ${strong.length} учеников в сильной зоне, ${urgent.length} требуют быстрого вмешательства, ${watch.length} находятся под наблюдением.`,
+    top.length
+      ? `Первый фокус: ${top.map((item) => `${item.studentName} — ${item.explanation}`).join(" ")}`
+      : "Сейчас нет учеников, которым нужно срочное вмешательство.",
+    top.length
+      ? `Следующий шаг: ${top.map((item) => `${item.studentName} — ${item.recommendation}`).join(" ")}`
+      : "Класс можно вести в текущем темпе без срочных вмешательств."
+  ].join(" ");
+}
+
 export async function getTeacherDashboardData(locale: Locale = "ru") {
   const session = await requireSession([Role.teacher]);
   const teacher = await prisma.teacherProfile.findUniqueOrThrow({
@@ -466,12 +625,32 @@ export async function getTeacherDashboardData(locale: Locale = "ru") {
 
     return {
       studentId: student.id,
+      classId: student.classId,
       studentName: student.user.fullName,
       className: student.schoolClass.name,
       highestRisk,
       avgScore: average(analytics.map((item) => item.averageScore)),
       misses: student.attendances.reduce((sum, item) => sum + item.totalMissCount, 0),
       analytics
+    };
+  }).map((item) => {
+    const riskScore = item.highestRisk?.riskScore ?? 0;
+    const riskBand = getTeacherRiskBand(riskScore);
+
+    return {
+      ...item,
+      riskScore,
+      riskBand,
+      explanation: buildTeacherRiskExplanation(locale, {
+        highestRisk: item.highestRisk,
+        misses: item.misses,
+        avgScore: item.avgScore
+      }),
+      recommendation: buildTeacherRecommendation(locale, {
+        highestRisk: item.highestRisk,
+        misses: item.misses,
+        avgScore: item.avgScore
+      })
     };
   });
 
@@ -489,19 +668,65 @@ export async function getTeacherDashboardData(locale: Locale = "ru") {
       title: teacher.title
     },
     assignments: teacher.assignments,
+    overview: {
+      classCount: classIds.length,
+      studentCount: items.length,
+      urgentCount: items.filter((item) => item.riskBand === "urgent").length,
+      watchCount: items.filter((item) => item.riskBand === "watch").length,
+      strongCount: items.filter((item) => item.riskBand === "strong").length,
+      attendanceConcernCount: items.filter((item) => item.misses >= 3).length,
+      averageScore: average(items.map((item) => item.avgScore)) ?? null,
+      summary: buildTeacherSummaryText(locale, {
+        classCount: classIds.length,
+        urgentCount: items.filter((item) => item.riskBand === "urgent").length,
+        watchCount: items.filter((item) => item.riskBand === "watch").length,
+        strongCount: items.filter((item) => item.riskBand === "strong").length,
+        attendanceConcernCount: items.filter((item) => item.misses >= 3).length
+      })
+    },
+    classOptions: classIds
+      .map((classId) => {
+        const schoolClass = teacher.assignments.find((item) => item.classId === classId)?.schoolClass;
+        return schoolClass
+          ? {
+              id: schoolClass.id,
+              name: schoolClass.name,
+              studentCount: items.filter((item) => item.classId === schoolClass.id).length
+            }
+          : null;
+      })
+      .filter((item): item is { id: string; name: string; studentCount: number } => item !== null),
     riskStudents: itemsWithRisk
       .filter((item) => item.highestRisk.riskScore >= 45)
       .sort((a, b) => b.highestRisk.riskScore - a.highestRisk.riskScore),
-    classReport: buildTeacherReport(locale, {
+    actionQueue: items
+      .filter((item) => item.highestRisk)
+      .filter((item) => item.riskBand === "urgent" || item.riskBand === "watch")
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 8),
+    segments: {
+      urgent: items.filter((item) => item.riskBand === "urgent").sort((a, b) => b.riskScore - a.riskScore),
+      watch: items.filter((item) => item.riskBand === "watch").sort((a, b) => b.riskScore - a.riskScore),
+      strong: items.filter((item) => item.riskBand === "strong").sort((a, b) => (b.avgScore ?? 0) - (a.avgScore ?? 0))
+    },
+    classReport: buildTeacherNarrativeReport(locale, {
       className: teacher.assignments[0]?.schoolClass.name ?? (locale === "kz" ? "Сынып" : "Класс"),
-      items: itemsWithRisk.map((item) => ({
-          studentName: item.studentName,
-          highestRisk: item.highestRisk,
-          avgScore: item.avgScore,
-          misses: item.misses
-        }))
+      items
     }),
-    table: items
+    reportMeta: {
+      generatedAt: new Date(),
+      headline:
+        locale === "kz"
+          ? "Сынып бойынша қысқа есеп"
+          : "Краткий отчёт по классу",
+      actions:
+        items
+          .filter((item) => item.highestRisk)
+          .sort((a, b) => b.riskScore - a.riskScore)
+          .slice(0, 3)
+          .map((item) => `${item.studentName}: ${item.recommendation}`)
+    },
+    table: items.sort((a, b) => b.riskScore - a.riskScore || a.studentName.localeCompare(b.studentName))
   };
 }
 

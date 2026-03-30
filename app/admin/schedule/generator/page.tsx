@@ -34,6 +34,8 @@ export default async function AdminScheduleGeneratorPage() {
           maxSlotCount={workspace.timeSlots.length}
           timeSlots={workspace.timeSlots}
           initialDraft={workspace.latestDraft}
+          initialDraftComparison={workspace.draftComparison}
+          initialDraftHealth={workspace.draftHealth}
         />
       </PageSection>
     </DashboardShell>

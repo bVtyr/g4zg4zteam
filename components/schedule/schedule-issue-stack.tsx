@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleSlash } from "lucide-react";
+﻿import { AlertTriangle, CheckCircle2, CircleSlash } from "lucide-react";
 import { getScheduleConflictSeverityLabel, getScheduleConflictTypeLabel } from "@/lib/schedule/copy";
 
 type ConflictRecord = {
@@ -21,12 +21,10 @@ type UnplacedRecord = {
   suggestedFixes: string[];
 };
 
-function renderFixes(fixes: string[]) {
-  if (!fixes.length) {
-    return null;
-  }
-
-  return fixes.join(" / ");
+function fallbackFix(locale: "ru" | "kz") {
+  return locale === "kz"
+    ? "О?ытушы, кабинет ж?не teaching assignment шектеулерін тексері?із."
+    : "Проверьте ограничения по учителю, кабинету и teaching assignment.";
 }
 
 export function ScheduleIssueStack({
@@ -43,20 +41,24 @@ export function ScheduleIssueStack({
   const copy =
     locale === "kz"
       ? {
-          titleConflicts: "Қақтығыстар",
-          titleUnplaced: "Орналаспай қалған сабақтар",
-          emptyConflicts: "Критикалық қақтығыстар табылған жоқ.",
-          emptyUnplaced: "Орналаспай қалған сабақтар жоқ.",
-          fixes: "Ұсыныстар",
-          reasons: "Негізгі себептер"
+          titleConflicts: "Конфликттер",
+          titleUnplaced: "Орналаспай ?ал?ан саба?тар",
+          emptyConflicts: "Ма?ызды конфликт табыл?ан жо?.",
+          emptyUnplaced: "Орналаспай ?ал?ан саба? жо?.",
+          fixes: "Келесі ?адам",
+          reasons: "Тексеру н?тижесі",
+          slot: "К?н / слот",
+          unplacedHint: "?ай шектеу кедергі жасап т?р?анын ?арап, ?айта генерацияла?ыз немесе ?олмен т?зеті?із."
         }
       : {
           titleConflicts: "Конфликты",
           titleUnplaced: "Неразмещённые уроки",
-          emptyConflicts: "Критических конфликтов не найдено.",
+          emptyConflicts: "Критичных конфликтов не найдено.",
           emptyUnplaced: "Неразмещённых уроков нет.",
-          fixes: "Подсказки",
-          reasons: "Основные причины"
+          fixes: "Следующий шаг",
+          reasons: "Результат проверки",
+          slot: "День / слот",
+          unplacedHint: "Проверьте ограничение, которое блокирует размещение, и пересоберите draft или исправьте запись вручную."
         };
 
   const panelClass = compact ? "max-h-[420px] overflow-y-auto" : "max-h-[640px] overflow-y-auto";
@@ -90,17 +92,13 @@ export function ScheduleIssueStack({
                   <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500">
                     {getScheduleConflictSeverityLabel(locale, conflict.severity)}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    {conflict.dayOfWeek} / {conflict.slotNumber ?? "—"}
-                  </span>
                 </div>
-                <p className="mt-2 text-sm text-slate-700">{conflict.message}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{conflict.explanation}</p>
-                {conflict.suggestedFixes.length ? (
-                  <p className="mt-2 text-xs text-slate-600">
-                    {copy.fixes}: {renderFixes(conflict.suggestedFixes)}
-                  </p>
-                ) : null}
+                <p className="mt-2 text-xs text-slate-500">
+                  {copy.slot}: {conflict.dayOfWeek} / {conflict.slotNumber ?? "—"}
+                </p>
+                <p className="mt-2 text-sm text-slate-700">
+                  {(conflict.suggestedFixes[0] ?? fallbackFix(locale))}
+                </p>
               </article>
             ))
           ) : (
@@ -138,12 +136,10 @@ export function ScheduleIssueStack({
                 <div className="mt-1 text-xs text-slate-500">
                   {[lesson.className, lesson.subjectName, lesson.teacherName].filter(Boolean).join(" / ") || "—"}
                 </div>
-                <p className="mt-2 text-sm text-slate-700">{lesson.reason}</p>
-                {lesson.suggestedFixes.length ? (
-                  <p className="mt-2 text-xs text-slate-600">
-                    {copy.fixes}: {renderFixes(lesson.suggestedFixes)}
-                  </p>
-                ) : null}
+                <p className="mt-2 text-sm text-slate-700">{copy.unplacedHint}</p>
+                <p className="mt-2 text-xs text-slate-600">
+                  {copy.fixes}: {lesson.suggestedFixes[0] ?? fallbackFix(locale)}
+                </p>
               </article>
             ))
           ) : (
@@ -159,3 +155,4 @@ export function ScheduleIssueStack({
     </div>
   );
 }
+
