@@ -462,7 +462,7 @@ export async function getTeacherDashboardData(locale: Locale = "ru") {
       subjectsMap,
       locale
     );
-    const highestRisk = [...analytics].sort((a, b) => b.riskScore - a.riskScore)[0];
+    const highestRisk = [...analytics].sort((a, b) => b.riskScore - a.riskScore)[0] ?? null;
 
     return {
       studentId: student.id,
@@ -475,20 +475,26 @@ export async function getTeacherDashboardData(locale: Locale = "ru") {
     };
   });
 
+  const itemsWithRisk = items.filter(
+    (
+      item
+    ): item is (typeof items)[number] & {
+      highestRisk: NonNullable<(typeof items)[number]["highestRisk"]>;
+    } => item.highestRisk !== null
+  );
+
   return {
     teacher: {
       fullName: teacher.user.fullName,
       title: teacher.title
     },
     assignments: teacher.assignments,
-    riskStudents: items
-      .filter((item) => item.highestRisk && item.highestRisk.riskScore >= 45)
+    riskStudents: itemsWithRisk
+      .filter((item) => item.highestRisk.riskScore >= 45)
       .sort((a, b) => b.highestRisk.riskScore - a.highestRisk.riskScore),
     classReport: buildTeacherReport(locale, {
       className: teacher.assignments[0]?.schoolClass.name ?? "Class",
-      items: items
-        .filter((item) => item.highestRisk)
-        .map((item) => ({
+      items: itemsWithRisk.map((item) => ({
           studentName: item.studentName,
           highestRisk: item.highestRisk,
           avgScore: item.avgScore,

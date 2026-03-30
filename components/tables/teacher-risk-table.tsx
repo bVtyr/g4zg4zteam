@@ -42,20 +42,20 @@ export function TeacherRiskTable({
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={`${item.studentName}-${item.highestRisk.subjectName}`} className="border-t border-slate-100">
+              <tr key={`${item.studentName}-${item.highestRisk?.subjectName ?? "no-risk"}`} className="border-t border-slate-100">
                 <td className="px-5 py-4 font-medium text-ink">{item.studentName}</td>
                 <td className="px-5 py-4">{item.className}</td>
                 <td className="px-5 py-4">
-                  <div className="font-medium text-ink">{item.highestRisk.subjectName}</div>
-                  <div className="text-xs text-slate-500">{item.highestRisk.trend}</div>
-                  {item.highestRisk.knowledgeGaps?.[0] ? (
+                  <div className="font-medium text-ink">{item.highestRisk?.subjectName ?? copy.common.notAvailable}</div>
+                  <div className="text-xs text-slate-500">{item.highestRisk?.trend ?? copy.common.notAvailable}</div>
+                  {item.highestRisk?.knowledgeGaps?.[0] ? (
                     <div className="mt-1 text-xs text-slate-500">
                       {item.highestRisk.knowledgeGaps[0].title}
                     </div>
                   ) : null}
                 </td>
                 <td className="px-5 py-4">
-                  <RiskBadge score={item.highestRisk.riskScore} locale={locale} />
+                  <RiskBadge score={item.highestRisk?.riskScore ?? 0} locale={locale} />
                 </td>
                 <td className="px-5 py-4">{item.avgScore !== null ? formatPercent(item.avgScore) : copy.common.notAvailable}</td>
                 <td className="px-5 py-4">{item.misses}</td>

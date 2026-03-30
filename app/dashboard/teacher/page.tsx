@@ -21,6 +21,8 @@ export default async function TeacherDashboardPage() {
         )
       : 0;
   const totalMisses = data.table.reduce((sum, item) => sum + item.misses, 0);
+  const fallbackRiskLabel = locale === "kz" ? "Әлі дерек жоқ" : "Пока нет данных";
+  const fallbackReason = locale === "kz" ? "Оқушы бойынша бағалар немесе пәндік аналитика әлі қалыптаспаған." : "По ученику пока нет оценок или предметной аналитики.";
 
   return (
     <DashboardShell
@@ -75,8 +77,8 @@ export default async function TeacherDashboardPage() {
                 {data.table.map((item) => (
                   <tr key={item.studentId} className="border-t border-slate-100">
                     <td className="px-5 py-4 font-medium text-ink">{item.studentName}</td>
-                    <td className="px-5 py-4">{item.highestRisk.subjectName}</td>
-                    <td className="px-5 py-4 text-slate-600">{item.highestRisk.explanation}</td>
+                    <td className="px-5 py-4">{item.highestRisk?.subjectName ?? fallbackRiskLabel}</td>
+                    <td className="px-5 py-4 text-slate-600">{item.highestRisk?.explanation ?? fallbackReason}</td>
                     <td className="px-5 py-4">{item.misses}</td>
                   </tr>
                 ))}
