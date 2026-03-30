@@ -635,7 +635,7 @@ export async function getScheduleModuleData(input?: {
     dayOfWeek: input?.dayOfWeek ?? undefined
   };
 
-  const [entries, teachers, rooms, classes, subjects, timeSlots, changes, absences, templates, runs, teacherAvailability, roomAvailability, assignments] =
+  const [entries, teachers, rooms, classes, classGroups, subjects, timeSlots, changes, absences, templates, runs, teacherAvailability, roomAvailability, assignments] =
     await Promise.all([
       prisma.scheduleEntry.findMany({
         where,
@@ -676,6 +676,13 @@ export async function getScheduleModuleData(input?: {
       }),
       prisma.schoolClass.findMany({
         orderBy: [{ gradeLevel: "asc" }, { name: "asc" }]
+      }),
+      prisma.classGroup.findMany({
+        include: {
+          schoolClass: true,
+          subject: true
+        },
+        orderBy: [{ schoolClass: { gradeLevel: "asc" } }, { schoolClass: { name: "asc" } }, { name: "asc" }]
       }),
       prisma.subject.findMany({
         orderBy: {
@@ -727,6 +734,11 @@ export async function getScheduleModuleData(input?: {
         },
         include: {
           schoolClass: true,
+          classGroup: {
+            include: {
+              schoolClass: true
+            }
+          },
           subject: true,
           teacher: {
             include: {
@@ -805,6 +817,7 @@ export async function getScheduleModuleData(input?: {
     teachers,
     rooms,
     classes,
+    classGroups,
     subjects,
     timeSlots: timeSlots.length
       ? timeSlots

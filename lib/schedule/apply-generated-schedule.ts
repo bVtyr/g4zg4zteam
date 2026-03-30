@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getCriticalConflicts, validateScheduleConflicts } from "@/lib/schedule/conflict-analysis";
 import { getScheduleDraftBatchDetail } from "@/lib/schedule/draft-batch";
 import { notifyAffectedUsers } from "@/lib/schedule/module-engine";
+import { buildWeeklyRequirementAudit, type WeeklyRequirementIssue } from "@/lib/schedule/weekly-requirements";
 
 export class DraftApplyConflictError extends Error {
   conflicts: ReturnType<typeof validateScheduleConflicts>;
@@ -16,6 +17,16 @@ export class DraftApplyConflictError extends Error {
     super(message);
     this.name = "DraftApplyConflictError";
     this.conflicts = conflicts;
+  }
+}
+
+export class DraftApplyValidationError extends Error {
+  issues: WeeklyRequirementIssue[];
+
+  constructor(message: string, issues: WeeklyRequirementIssue[]) {
+    super(message);
+    this.name = "DraftApplyValidationError";
+    this.issues = issues;
   }
 }
 
@@ -149,6 +160,19 @@ export async function applyGeneratedScheduleBatch(input: {
       );
     }
 
+    const weeklyRequirements = await buildWeeklyRequirementAudit({
+      schoolYear: batch.schoolYear,
+      term: batch.term,
+      classIds: batch.classIds,
+      entries: [...fixedEntries, ...generatedDraftEntries]
+    });
+    if (weeklyRequirements.issues.length) {
+      throw new DraftApplyValidationError(
+        "Draft batch cannot be applied because weekly lesson requirements are not met.",
+        weeklyRequirements.issues
+      );
+    }
+
     const replaceableEntries = currentEntries.filter((entry) => {
       const entryClassId = entry.classId ?? entry.classGroup?.classId ?? null;
       if (!entryClassId || !selectedClassSet.has(entryClassId)) {
@@ -255,7 +279,8 @@ export async function applyGeneratedScheduleBatch(input: {
       replacedEntryCount: deleteResult.count,
       createdEntryCount: generatedDraftEntries.length,
       preservedEntryCount: applyHistory.preservedEntryCount,
-      conflicts
+      conflicts,
+      weeklyRequirements
     };
   });
 

@@ -34,6 +34,28 @@ type DraftBatch = {
   unplaced: Array<any>;
   notes: string[];
   entries: Array<any>;
+  weeklyRequirements?: {
+    summary: {
+      requirementCount: number;
+      requiredLessons: number;
+      actualLessons: number;
+      matched: number;
+      missing: number;
+      overflow: number;
+      issues: number;
+    };
+    issues: Array<{
+      key: string;
+      className: string;
+      classGroupName: string | null;
+      subjectName: string;
+      requiredCount: number;
+      actualCount: number;
+      difference: number;
+      source: "template" | "assignment" | "schedule-only";
+      severity: "warning" | "error";
+    }>;
+  };
 };
 
 export function ScheduleGeneratorWorkbench({
@@ -151,6 +173,9 @@ export function ScheduleGeneratorWorkbench({
     roomStability: "Сохранять стабильность кабинетов",
     sameSubject: "Разрешить повтор предмета в один день",
     summary: "Результат draft",
+    weekly: "Недельная нагрузка",
+    weeklyOk: "Недельная нагрузка совпадает с настройками.",
+    weeklyHint: "Генератор сравнивает обязательное количество уроков по каждому предмету с фактическим draft.",
     notes: "Примечания",
     classes: "Классы в генерации",
     noDraft: "После генерации здесь появится preview расписания."
@@ -531,7 +556,11 @@ export function ScheduleGeneratorWorkbench({
                 <button
                   type="button"
                   className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                  disabled={isPending || draft.status === "applied"}
+                  disabled={
+                    isPending ||
+                    draft.status === "applied" ||
+                    (draft.weeklyRequirements?.issues.length ?? 0) > 0
+                  }
                   onClick={() => void runApply()}
                 >
                   {copy.apply}
@@ -621,6 +650,95 @@ export function ScheduleGeneratorWorkbench({
                   </div>
                 ))}
               </div>
+            ) : null}
+
+            {draft.weeklyRequirements ? (
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-base font-semibold text-ink">{copy.weekly}</h4>
+                    <p className="mt-1 text-sm text-slate-500">{copy.weeklyHint}</p>
+                  </div>
+                  <div
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      draft.weeklyRequirements.issues.length
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {draft.weeklyRequirements.issues.length
+                      ? `Проблем: ${draft.weeklyRequirements.issues.length}`
+                      : "Готово к публикации"}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Требуется</div>
+                    <div className="mt-2 text-2xl font-semibold text-ink">
+                      {draft.weeklyRequirements.summary.requiredLessons}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">В draft</div>
+                    <div className="mt-2 text-2xl font-semibold text-ink">
+                      {draft.weeklyRequirements.summary.actualLessons}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Совпало</div>
+                    <div className="mt-2 text-2xl font-semibold text-ink">
+                      {draft.weeklyRequirements.summary.matched}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-slate-500">Проблемы</div>
+                    <div className="mt-2 text-2xl font-semibold text-ink">
+                      {draft.weeklyRequirements.summary.issues}
+                    </div>
+                  </div>
+                </div>
+
+                {draft.weeklyRequirements.issues.length ? (
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-rose-200">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-rose-50 text-left text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                        <tr>
+                          <th className="px-3 py-3">Класс</th>
+                          <th className="px-3 py-3">Предмет</th>
+                          <th className="px-3 py-3">Требуется</th>
+                          <th className="px-3 py-3">Факт</th>
+                          <th className="px-3 py-3">Причина</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {draft.weeklyRequirements.issues.map((issue) => (
+                          <tr key={issue.key} className="border-t border-rose-100 align-top">
+                            <td className="px-3 py-3 font-medium text-ink">
+                              {issue.className}
+                              {issue.classGroupName ? ` • ${issue.classGroupName}` : ""}
+                            </td>
+                            <td className="px-3 py-3 text-slate-700">{issue.subjectName}</td>
+                            <td className="px-3 py-3 text-slate-700">{issue.requiredCount}</td>
+                            <td className="px-3 py-3 text-slate-700">{issue.actualCount}</td>
+                            <td className="px-3 py-3 text-slate-600">
+                              {issue.actualCount < issue.requiredCount
+                                ? "Не хватает уроков в draft."
+                                : issue.requiredCount === 0
+                                  ? "В сетке есть лишний урок без требования."
+                                  : "Уроков больше, чем разрешено настройкой."}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    {copy.weeklyOk}
+                  </div>
+                )}
+              </section>
             ) : null}
 
             <ScheduleIssueStack locale={locale} conflicts={draft.conflicts} unplaced={draft.unplaced} />

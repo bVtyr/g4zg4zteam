@@ -3,7 +3,8 @@ import { Role } from "@prisma/client";
 import { requireSession } from "@/lib/auth/session";
 import {
   applyGeneratedScheduleBatch,
-  DraftApplyConflictError
+  DraftApplyConflictError,
+  DraftApplyValidationError
 } from "@/lib/schedule/apply-generated-schedule";
 import { createAuditLog } from "@/lib/services/audit-log-service";
 
@@ -55,6 +56,30 @@ export async function POST(
         {
           error: error.message,
           conflicts: error.conflicts
+        },
+        { status: 409 }
+      );
+    }
+
+    if (error instanceof DraftApplyValidationError) {
+      await createAuditLog({
+        eventType: "admin_action",
+        action: "admin-schedule-apply-draft",
+        status: "warning",
+        actorUserId: session.id,
+        actorRole: session.role,
+        entityType: "schedule-draft",
+        entityId: batchId,
+        message: `Apply rejected for draft ${batchId} because weekly requirements are not met.`,
+        metadata: {
+          issues: error.issues
+        }
+      });
+
+      return NextResponse.json(
+        {
+          error: error.message,
+          issues: error.issues
         },
         { status: 409 }
       );

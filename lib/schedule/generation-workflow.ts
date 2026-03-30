@@ -1,6 +1,7 @@
 import {
   applyGeneratedScheduleBatch,
-  DraftApplyConflictError
+  DraftApplyConflictError,
+  DraftApplyValidationError
 } from "@/lib/schedule/apply-generated-schedule";
 import {
   createDraftBatchFromResult,
@@ -38,6 +39,18 @@ export async function generateScheduleDraftWorkflow(input: ScheduleGenerationInp
           applyError: {
             error: error.message,
             conflicts: error.conflicts
+          }
+        };
+      }
+
+      if (error instanceof DraftApplyValidationError) {
+        return {
+          batch: await getScheduleDraftBatchDetail(batch.id),
+          result,
+          applied: null,
+          applyError: {
+            error: error.message,
+            issues: error.issues
           }
         };
       }

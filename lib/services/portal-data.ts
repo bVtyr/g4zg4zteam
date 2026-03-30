@@ -1000,77 +1000,416 @@ export async function getPortfolioForCurrentUser(locale: Locale = "ru") {
   };
 }
 
-export async function getKioskFeed(locale: Locale = "ru") {
-  const topStudents = await prisma.leaderboardScore.findMany({
-    orderBy: {
-      points: "desc"
-    },
-    take: 5,
-    include: {
-      student: {
-        include: {
-          user: true,
-          schoolClass: true
-        }
-      }
-    }
-  });
+function startOfLocalDay(date = new Date()) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
 
-  const announcements = await prisma.notification.findMany({
-    orderBy: {
-      createdAt: "desc"
-    },
-    take: 5
-  });
+function endOfLocalDay(date = new Date()) {
+  const value = new Date(date);
+  value.setHours(23, 59, 59, 999);
+  return value;
+}
 
-  const replacements = await prisma.scheduleEntry.findMany({
-    where: {
-      isReplacement: true
-    },
-    include: {
-      schoolClass: true,
-      teacher: {
-        include: {
-          user: true
-        }
-      }
-    },
-    take: 5
-  });
+function addDaysToDate(date: Date, days: number) {
+  const value = new Date(date);
+  value.setDate(value.getDate() + days);
+  return value;
+}
 
-  const events = await prisma.event.findMany({
-    where: {
-      startsAt: {
-        gte: new Date()
-      }
-    },
-    orderBy: {
-      startsAt: "asc"
-    },
-    take: 5
+function averageScore(values: Array<number | null | undefined>) {
+  const filtered = values.filter((value): value is number => typeof value === "number");
+  if (!filtered.length) {
+    return 0;
+  }
+
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
+function clipText(value: string, maxLength: number) {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trim()}…`;
+}
+
+function formatKioskDate(locale: Locale, value: Date, options?: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat(locale === "kz" ? "kk-KZ" : "ru-RU", options).format(value);
+}
+
+function formatKioskDateTime(locale: Locale, value: Date) {
+  return formatKioskDate(locale, value, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
   });
+}
+
+function formatKioskTime(locale: Locale, value: Date) {
+  return formatKioskDate(locale, value, {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function getAttendanceDisciplineScore(records: AttendanceRecord[]) {
+  if (!records.length) {
+    return 8;
+  }
+
+  const misses = records.reduce(
+    (sum, record) => sum + record.missingWithoutReason + record.missingDue + record.missingByAnotherReason,
+    0
+  );
+
+  return Math.max(0, 18 - misses * 4);
+}
+
+function getAcademicMomentum(records: GradeRecord[]) {
+  const normalized = records
+    .map((record) => record.normalizedScore ?? record.finalScore ?? record.rawScore ?? null)
+    .filter((value): value is number => typeof value === "number");
+
+  if (!normalized.length) {
+    return {
+      average: 0,
+      delta: 0
+    };
+  }
 
   return {
-    topStudents: topStudents.map((item) => ({
-      name: item.student.user.fullName,
-      className: item.student.schoolClass.name,
-      points: item.points
+    average: averageScore(normalized),
+    delta: normalized.length >= 2 ? normalized[normalized.length - 1] - normalized[0] : normalized[0] - 80
+  };
+}
+
+function buildLeaderReason(input: {
+  achievementCount: number;
+  badgeCount: number;
+  attendanceScore: number;
+  academicAverage: number;
+  academicDelta: number;
+  streakDays: number;
+}) {
+  const parts: string[] = [];
+
+  if (input.achievementCount > 0) {
+    parts.push(`${input.achievementCount} достиж. за период`);
+  }
+
+  if (input.badgeCount > 0) {
+    parts.push(`${input.badgeCount} badge`);
+  }
+
+  if (input.academicAverage >= 88) {
+    parts.push(`сильные оценки ${Math.round(input.academicAverage)}%`);
+  } else if (input.academicDelta >= 6) {
+    parts.push(`рост на ${Math.round(input.academicDelta)} п.п.`);
+  }
+
+  if (input.attendanceScore >= 16) {
+    parts.push("без пропусков");
+  }
+
+  if (input.streakDays >= 5) {
+    parts.push(`серия ${input.streakDays} дн.`);
+  }
+
+  return parts.slice(0, 2).join(" • ") || "стабильная учебная динамика";
+}
+
+export async function getKioskFeed(locale: Locale = "ru") {
+  const now = new Date();
+  const dayStart = startOfLocalDay(now);
+  const dayEnd = endOfLocalDay(now);
+  const todayWindowStart = addDaysToDate(dayStart, -1);
+  const weekWindowStart = addDaysToDate(dayStart, -7);
+  const achievementWindowStart = addDaysToDate(dayStart, -14);
+  const replacementWindowEnd = addDaysToDate(dayEnd, 6);
+
+  const [students, notifications, replacements, events] = await Promise.all([
+    prisma.studentProfile.findMany({
+      include: {
+        user: true,
+        schoolClass: true,
+        grades: {
+          where: {
+            recordedAt: {
+              gte: weekWindowStart
+            }
+          },
+          orderBy: {
+            recordedAt: "asc"
+          }
+        },
+        attendances: {
+          where: {
+            recordedAt: {
+              gte: weekWindowStart
+            }
+          },
+          orderBy: {
+            recordedAt: "desc"
+          }
+        },
+        achievements: {
+          where: {
+            achievedAt: {
+              gte: achievementWindowStart
+            }
+          },
+          orderBy: {
+            achievedAt: "desc"
+          },
+          take: 6
+        },
+        badgeAwards: {
+          where: {
+            awardedAt: {
+              gte: achievementWindowStart
+            }
+          },
+          include: {
+            badge: true
+          },
+          orderBy: {
+            awardedAt: "desc"
+          },
+          take: 4
+        },
+        leaderboardScores: {
+          orderBy: {
+            points: "desc"
+          },
+          take: 4
+        }
+      }
+    }),
+    prisma.notification.findMany({
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 5
+    }),
+    prisma.scheduleEntry.findMany({
+      where: {
+        isReplacement: true,
+        status: "active",
+        effectiveDate: {
+          gte: dayStart,
+          lte: replacementWindowEnd
+        }
+      },
+      include: {
+        schoolClass: true,
+        classGroup: {
+          include: {
+            schoolClass: true
+          }
+        },
+        subject: true,
+        teacher: {
+          include: {
+            user: true
+          }
+        },
+        room: true
+      },
+      orderBy: [{ effectiveDate: "asc" }, { dayOfWeek: "asc" }, { slotNumber: "asc" }],
+      take: 6
+    }),
+    prisma.event.findMany({
+      where: {
+        isPublished: true,
+        endsAt: {
+          gte: dayStart
+        }
+      },
+      orderBy: {
+        startsAt: "asc"
+      },
+      take: 5
+    })
+  ]);
+
+  const studentSnapshots = students.map((student) => {
+    const todayAchievements = student.achievements.filter((item) => item.achievedAt >= todayWindowStart);
+    const weekAchievements = student.achievements.filter((item) => item.achievedAt >= weekWindowStart);
+    const todayBadges = student.badgeAwards.filter((item) => item.awardedAt >= todayWindowStart);
+    const weekBadges = student.badgeAwards.filter((item) => item.awardedAt >= weekWindowStart);
+    const todayGrades = student.grades.filter((item) => item.recordedAt >= todayWindowStart);
+    const todayAttendances = student.attendances.filter((item) => item.recordedAt >= todayWindowStart);
+    const topLeaderboard = student.leaderboardScores[0] ?? null;
+    const todayAcademic = getAcademicMomentum(todayGrades);
+    const weekAcademic = getAcademicMomentum(student.grades);
+    const todayAttendanceScore = getAttendanceDisciplineScore(todayAttendances);
+    const weekAttendanceScore = getAttendanceDisciplineScore(student.attendances);
+
+    const todayScore =
+      todayAchievements.length * 28 +
+      todayBadges.length * 20 +
+      Math.round(todayAcademic.average * 0.28) +
+      Math.max(0, Math.round(todayAcademic.delta * 2)) +
+      todayAttendanceScore +
+      Math.min(10, topLeaderboard?.streakDays ?? 0);
+
+    const weekScore =
+      weekAchievements.length * 22 +
+      weekBadges.length * 16 +
+      Math.round(weekAcademic.average * 0.32) +
+      Math.max(0, Math.round(weekAcademic.delta * 1.5)) +
+      weekAttendanceScore +
+      Math.round((topLeaderboard?.points ?? 0) / 8) +
+      Math.min(18, (topLeaderboard?.streakDays ?? 0) * 2);
+
+    return {
+      id: student.id,
+      name: student.user.fullName,
+      className: student.schoolClass.name,
+      todayScore,
+      weekScore,
+      todayReason: buildLeaderReason({
+        achievementCount: todayAchievements.length,
+        badgeCount: todayBadges.length,
+        attendanceScore: todayAttendanceScore,
+        academicAverage: todayAcademic.average,
+        academicDelta: todayAcademic.delta,
+        streakDays: topLeaderboard?.streakDays ?? 0
+      }),
+      weekReason: buildLeaderReason({
+        achievementCount: weekAchievements.length,
+        badgeCount: weekBadges.length,
+        attendanceScore: weekAttendanceScore,
+        academicAverage: weekAcademic.average,
+        academicDelta: weekAcademic.delta,
+        streakDays: topLeaderboard?.streakDays ?? 0
+      }),
+      topLeaderboard
+    };
+  });
+
+  const leadersToday = [...studentSnapshots]
+    .sort((left, right) => right.todayScore - left.todayScore || left.name.localeCompare(right.name, "ru"))
+    .slice(0, 4)
+    .map((student, index) => ({
+      id: student.id,
+      rank: index + 1,
+      name: student.name,
+      className: student.className,
+      score: student.todayScore,
+      metric:
+        student.topLeaderboard?.streakDays
+          ? `серия ${student.topLeaderboard.streakDays} дн.`
+          : "дневной прогресс",
+      reason: student.todayReason
+    }));
+
+  const leadersWeek = [...studentSnapshots]
+    .sort((left, right) => right.weekScore - left.weekScore || left.name.localeCompare(right.name, "ru"))
+    .slice(0, 4)
+    .map((student, index) => ({
+      id: student.id,
+      rank: index + 1,
+      name: student.name,
+      className: student.className,
+      score: student.weekScore,
+      metric:
+        student.topLeaderboard?.points
+          ? `${student.topLeaderboard.points} баллов`
+          : "недельный рейтинг",
+      reason: student.weekReason
+    }));
+
+  const achievements = [
+    ...students.flatMap((student) =>
+      student.achievements.map((achievement) => ({
+        id: `achievement:${achievement.id}`,
+        studentName: student.user.fullName,
+        className: student.schoolClass.name,
+        title: translateContent(locale, achievement.title),
+        subtitle: achievement.level ? clipText(translateContent(locale, achievement.level), 64) : null,
+        occurredAt: achievement.achievedAt
+      }))
+    ),
+    ...students.flatMap((student) =>
+      student.badgeAwards.map((award) => ({
+        id: `badge:${award.id}`,
+        studentName: student.user.fullName,
+        className: student.schoolClass.name,
+        title: translateContent(locale, award.badge.name),
+        subtitle: clipText(translateContent(locale, award.badge.description), 64),
+        occurredAt: award.awardedAt
+      }))
+    )
+  ]
+    .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())
+    .filter(
+      (item, index, list) =>
+        list.findIndex(
+          (candidate) =>
+            candidate.studentName === item.studentName &&
+            candidate.title.toLowerCase() === item.title.toLowerCase()
+        ) === index
+    )
+    .slice(0, 6)
+    .map((item) => ({
+      id: item.id,
+      studentName: item.studentName,
+      className: item.className,
+      title: item.title,
+      subtitle: item.subtitle,
+      occurredAtLabel: formatKioskDateTime(locale, item.occurredAt)
+    }));
+
+  return {
+    leadersToday,
+    leadersWeek,
+    achievements,
+    replacements: replacements.map((entry) => ({
+      id: entry.id,
+      title: clipText(translateContent(locale, entry.subject?.name ?? entry.title), 72),
+      className: entry.schoolClass?.name ?? entry.classGroup?.schoolClass?.name ?? "Все классы",
+      teacherName: entry.teacher?.user.fullName ?? "Учитель уточняется",
+      roomName: entry.room?.name ?? "Кабинет уточняется",
+      timeLabel: `${formatKioskDate(locale, entry.effectiveDate, {
+        day: "numeric",
+        month: "short"
+      })} • ${entry.startTime}-${entry.endTime}`
     })),
-    announcements: announcements.map((item) => ({
-      ...item,
-      title: translateContent(locale, item.title),
-      body: translateContent(locale, item.body)
+    announcements: notifications.map((notification) => ({
+      id: notification.id,
+      title: clipText(translateContent(locale, notification.title), 72),
+      body: clipText(translateContent(locale, notification.body), 120),
+      meta: formatKioskDateTime(locale, notification.createdAt)
     })),
-    replacements: replacements.map((item) => ({
-      ...item,
-      title: translateContent(locale, item.title),
-      schoolClass: item.schoolClass
+    events: events.map((event) => ({
+      id: event.id,
+      title: clipText(translateContent(locale, event.title), 72),
+      body: clipText(translateContent(locale, event.description), 110),
+      meta: `${formatKioskDate(locale, event.startsAt, {
+        weekday: "short",
+        day: "numeric",
+        month: "short"
+      })} • ${formatKioskTime(locale, event.startsAt)}${event.location ? ` • ${clipText(translateContent(locale, event.location), 36)}` : ""}`
     })),
-    events: events.map((item) => ({
-      ...item,
-      title: translateContent(locale, item.title),
-      location: translateContent(locale, item.location ?? "")
-    }))
+    generatedAt: now.toISOString(),
+    windows: {
+      today: formatKioskDate(locale, dayStart, {
+        day: "numeric",
+        month: "long"
+      }),
+      week: `${formatKioskDate(locale, weekWindowStart, {
+        day: "numeric",
+        month: "short"
+      })} - ${formatKioskDate(locale, now, {
+        day: "numeric",
+        month: "short"
+      })}`
+    }
   };
 }
 

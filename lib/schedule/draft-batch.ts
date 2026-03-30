@@ -1,6 +1,7 @@
 import { Prisma, ScheduleDraftBatchStatus, ScheduleGenerationRunStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import type { GeneratedDraftEntry, GeneratedDraftResult } from "@/lib/schedule/generation-types";
+import { buildWeeklyRequirementAudit } from "@/lib/schedule/weekly-requirements";
 
 function toJson(value: unknown) {
   return JSON.stringify(value ?? null);
@@ -136,6 +137,13 @@ export async function getScheduleDraftBatchDetail(
     }
   });
 
+  const weeklyRequirements = await buildWeeklyRequirementAudit({
+    schoolYear: batch.schoolYear,
+    term: batch.term,
+    classIds: JSON.parse(batch.selectedClassIds) as string[],
+    entries: batch.entries
+  });
+
   return {
     id: batch.id,
     schoolYear: batch.schoolYear,
@@ -175,6 +183,7 @@ export async function getScheduleDraftBatchDetail(
     generatedCount: batch.generatedCount,
     unplacedCount: batch.unplacedCount,
     conflictCount: batch.conflictCount,
+    weeklyRequirements,
     exportedAt: batch.exportedAt,
     appliedAt: batch.appliedAt,
     createdAt: batch.createdAt,
