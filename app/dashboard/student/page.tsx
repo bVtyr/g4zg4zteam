@@ -55,7 +55,11 @@ export default async function StudentDashboardPage() {
       <PageSection
         eyebrow={copy.student.title}
         title={locale === "kz" ? "Оқу көрінісі" : "Учебная картина"}
-        description={locale === "kz" ? "Жоғарғы блокта тек негізгі академиялық сигналдар мен осы аптадағы басымдықтар." : "Сверху только ключевые академические сигналы и приоритеты на эту неделю."}
+        description={
+          locale === "kz"
+            ? "Жоғарыда осы аптаға маңызды пәндер мен тәуекел сигналдары көрсетілген."
+            : "Сверху только ключевые предметы недели и сигналы риска."
+        }
       >
         <div className="grid gap-4 xl:grid-cols-4">
           {topSubjects.map((item) => (
@@ -66,7 +70,11 @@ export default async function StudentDashboardPage() {
 
       <PageSection
         title={locale === "kz" ? "Бағалар мен синхрондау" : "Оценки и синхронизация"}
-        description={locale === "kz" ? "BilimClass байланысы бөлек, ал бағалар кестесі бөлек орналасқан." : "Подключение BilimClass вынесено отдельно, а gradebook оставлен отдельной рабочей зоной."}
+        description={
+          locale === "kz"
+            ? "BilimClass байланысы мен gradebook бір бөлімде жиналды."
+            : "Подключение BilimClass и рабочий gradebook собраны в одном разделе."
+        }
       >
         <div className="space-y-5">
           <BilimClassConnectionCard locale={locale} state={data.bilimClass} />
@@ -75,8 +83,12 @@ export default async function StudentDashboardPage() {
       </PageSection>
 
       <PageSection
-        title={locale === "kz" ? "AI insight" : "AI insights"}
-        description={locale === "kz" ? "Тәуекелі ең жоғары пән, тренд және келесі әрекеттер бір жерде." : "Самый рисковый предмет, тренд и следующие шаги собраны в одном месте."}
+        title={locale === "kz" ? "AI талдауы" : "AI-анализ"}
+        description={
+          locale === "kz"
+            ? "Ең тәуекелді пән, тренд және келесі қадамдар бір жерде."
+            : "Самый рискованный предмет, тренд и конкретные следующие шаги в одном блоке."
+        }
       >
         <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
           {topRisk ? (
@@ -92,8 +104,12 @@ export default async function StudentDashboardPage() {
       </PageSection>
 
       <PageSection
-        title={locale === "kz" ? "Қолдау және байланыс" : "Поддержка и связи"}
-        description={locale === "kz" ? "Апталық summary, ата-ананы байлау және оқу контурына жылдам өтулер." : "Weekly summary, привязка родителя и быстрые переходы по учебному контуру."}
+        title={locale === "kz" ? "Байланыс пен қолдау" : "Связи и поддержка"}
+        description={
+          locale === "kz"
+            ? "Апталық summary, ата-ананы қосу және негізгі бөлімдерге жылдам өту."
+            : "Weekly summary, привязка родителя и быстрые переходы к ключевым разделам."
+        }
       >
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-6">
@@ -101,14 +117,20 @@ export default async function StudentDashboardPage() {
             <StudentParentLinkCard locale={locale} state={data.parentLinking} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <LinkPanel href="/portfolio" title={copy.nav.portfolio} description={locale === "kz" ? "Жетістіктер, сертификаттар және verified profile." : "Достижения, сертификаты и verified profile."} />
-            <LinkPanel href="/schedule" title={copy.nav.schedule} description={locale === "kz" ? "Апта кестесі мен ауыстыруларды ашу." : "Открыть недельное расписание и замены."} />
-            <LinkPanel href="/notifications" title={copy.nav.notifications} description={locale === "kz" ? "Жеке және мектеп хабарламалары." : "Личные и школьные уведомления."} />
+            <LinkPanel href="/portfolio" title={copy.nav.portfolio} description={locale === "kz" ? "Жетістіктер, сертификаттар және расталған профиль." : "Достижения, сертификаты и подтвержденный профиль."} />
+            <LinkPanel href="/schedule" title={copy.nav.schedule} description={locale === "kz" ? "Апталық кесте мен ауыстырулар." : "Недельное расписание и замены."} />
+            <LinkPanel href="/notifications" title={copy.nav.notifications} description={locale === "kz" ? "Жеке және мектептік хабарламалар." : "Личные и школьные уведомления."} />
             <div className="panel p-5">
               <div className="text-sm text-slate-500">{locale === "kz" ? "Профиль" : "Профиль"}</div>
               <div className="mt-2 text-lg font-semibold text-ink">{data.student.className}</div>
               <div className="mt-3 text-sm text-slate-600">
-                {data.student.verifiedProfile ? (locale === "kz" ? "Профиль расталған." : "Профиль подтверждён.") : (locale === "kz" ? "Профильді толықтыру керек." : "Профиль стоит дополнить.")}
+                {data.student.verifiedProfile
+                  ? locale === "kz"
+                    ? "Профиль расталған."
+                    : "Профиль подтвержден."
+                  : locale === "kz"
+                    ? "Профильді толықтыру керек."
+                    : "Профиль стоит дополнить."}
               </div>
             </div>
           </div>
@@ -117,7 +139,11 @@ export default async function StudentDashboardPage() {
 
       <PageSection
         title={copy.student.gamification}
-        description={locale === "kz" ? "Goals, badges және leaderboard төменгі бөлек секцияда." : "Goals, badges и leaderboard вынесены в отдельную нижнюю секцию."}
+        description={
+          locale === "kz"
+            ? "Мақсаттар, badges және рейтинг төмендегі секцияда жиналған."
+            : "Цели, badges и рейтинг собраны в нижнем блоке."
+        }
         action={<Link href="/portfolio" className="text-sm font-medium text-royal">{copy.nav.portfolio}</Link>}
       >
         <div className="panel p-5">

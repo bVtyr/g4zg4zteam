@@ -861,9 +861,13 @@ model BilimClassConnection {
   baseUrl         String
   login           String?
   password        String?
+  bilimUserId     Int?
   schoolId        Int
   eduYear         Int
   groupId         Int?
+  groupName       String?
+  studentFullName String?
+  externalRole    String?
   accessToken     String?
   refreshToken    String?
   lastStatus      String?

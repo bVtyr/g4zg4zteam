@@ -1,5 +1,6 @@
-import { AuditEventType, AuditStatus, ScoreType, type Prisma } from "@prisma/client";
+﻿import { AuditEventType, AuditStatus, ScoreType, type Prisma } from "@prisma/client";
 import { MockBilimClassAdapter, LiveBilimClassAdapter, type BilimClassAdapter } from "@/lib/bilimclass/adapter";
+import { resolveBilimClassAcademicContext, buildBilimClassDebugContext, buildBilimClassScopeKey, maskBilimClassSecret, sanitizeBilimClassText } from "@/lib/bilimclass/context";
 import { decryptBilimClassSecret, encryptBilimClassSecret } from "@/lib/bilimclass/crypto";
 import {
   mapBilimClassScoreType,
@@ -33,60 +34,30 @@ type ResolvedConnection = Omit<ConnectionWithStudent, "login" | "password" | "ac
   refreshToken: string | null;
 };
 
+type StudentBoundConnection = Pick<
+  ResolvedConnection,
+  "student" | "bilimUserId" | "schoolId" | "eduYear" | "groupId" | "mode"
+> & {
+  student: NonNullable<ResolvedConnection["student"]>;
+};
+
 const DEFAULT_BASE_URL = process.env.BILIMCLASS_BASE_URL ?? "https://api.bilimclass.kz";
+const DEFAULT_MODE = (process.env.BILIMCLASS_MODE ?? "mock") as "live" | "mock";
 const AUTO_SYNC_MINUTES = Number(process.env.BILIMCLASS_AUTO_SYNC_MINUTES ?? "360");
 
-function mojibakeScore(value: string) {
-  return (value.match(/[РСЃЋЌЎЄЇ]/g) ?? []).length;
-}
-
-function sanitizeBilimClassText(value?: string | null) {
-  if (!value) {
-    return value ?? "";
+function logBilimClass(level: "info" | "warn" | "error", event: string, payload: Record<string, unknown>) {
+  const message = `[bilimclass] ${event}`;
+  if (level === "error") {
+    console.error(message, payload);
+    return;
   }
 
-  const repaired = Buffer.from(value, "latin1").toString("utf8");
-  if (!repaired || repaired === value) {
-    return value;
+  if (level === "warn") {
+    console.warn(message, payload);
+    return;
   }
 
-  return mojibakeScore(repaired) + 2 < mojibakeScore(value) ? repaired : value;
-}
-
-function sanitizeYearResponse(response: BilimClassYearResponse): BilimClassYearResponse {
-  return {
-    data: {
-      ...response.data,
-      groupName: sanitizeBilimClassText(response.data.groupName),
-      rows: response.data.rows.map((row) => ({
-        ...row,
-        subjectName: sanitizeBilimClassText(row.subjectName)
-      }))
-    }
-  };
-}
-
-function sanitizeSubjectDetails(details: BilimClassSubjectDetail[]) {
-  return details.map((item) => ({
-    ...item,
-    subjectName: sanitizeBilimClassText(item.subjectName)
-  }));
-}
-
-function pickSchoolYear(
-  values: Array<{
-    schoolId: number;
-    eduYear: number;
-    isCurrent?: boolean;
-  }>,
-  preferredYear?: number
-) {
-  return (
-    values.find((item) => item.eduYear === preferredYear) ??
-    values.find((item) => item.isCurrent) ??
-    values[0] ??
-    null
-  );
+  console.info(message, payload);
 }
 
 function resolveConnectionSecrets(connection: ConnectionWithStudent): ResolvedConnection {
@@ -97,6 +68,42 @@ function resolveConnectionSecrets(connection: ConnectionWithStudent): ResolvedCo
     accessToken: decryptBilimClassSecret(connection.accessToken),
     refreshToken: decryptBilimClassSecret(connection.refreshToken)
   };
+}
+
+function assertStudentConnection(connection: ConnectionWithStudent | ResolvedConnection | null): asserts connection is ConnectionWithStudent | ResolvedConnection {
+  if (!connection?.student) {
+    throw new Error("BilimClass connection is not linked to a student");
+  }
+}
+
+function buildConnectionScope(
+  connection: StudentBoundConnection,
+  extra?: { period?: number | null; periodType?: "quarter" | "halfyear" | "year" | null }
+) {
+  const cacheKey = buildBilimClassScopeKey({
+    localStudentId: connection.student.id,
+    localUserId: connection.student.user.id,
+    bilimUserId: connection.bilimUserId,
+    schoolId: connection.schoolId,
+    eduYear: connection.eduYear,
+    groupId: connection.groupId,
+    period: extra?.period,
+    periodType: extra?.periodType
+  });
+
+  return buildBilimClassDebugContext({
+    localStudentId: connection.student.id,
+    localUserId: connection.student.user.id,
+    bilimUserId: connection.bilimUserId,
+    schoolId: connection.schoolId,
+    eduYear: connection.eduYear,
+    groupId: connection.groupId,
+    period: extra?.period,
+    periodType: extra?.periodType,
+    mode: connection.mode,
+    source: connection.mode === "live" ? "live" : "mock",
+    cacheKey
+  });
 }
 
 async function getConnectionLatestLog(connectionId: string) {
@@ -131,9 +138,13 @@ async function writeSyncLog(input: {
 }
 
 async function updateConnectionState(connectionId: string, input: {
+  bilimUserId?: number | null;
   schoolId?: number;
   eduYear?: number;
   groupId?: number | null;
+  groupName?: string | null;
+  studentFullName?: string | null;
+  externalRole?: string | null;
   accessToken?: string | null;
   refreshToken?: string | null;
   lastStatus?: string;
@@ -142,9 +153,13 @@ async function updateConnectionState(connectionId: string, input: {
   return prisma.bilimClassConnection.update({
     where: { id: connectionId },
     data: {
+      ...(input.bilimUserId !== undefined ? { bilimUserId: input.bilimUserId } : {}),
       ...(input.schoolId !== undefined ? { schoolId: input.schoolId } : {}),
       ...(input.eduYear !== undefined ? { eduYear: input.eduYear } : {}),
       ...(input.groupId !== undefined ? { groupId: input.groupId } : {}),
+      ...(input.groupName !== undefined ? { groupName: input.groupName } : {}),
+      ...(input.studentFullName !== undefined ? { studentFullName: input.studentFullName } : {}),
+      ...(input.externalRole !== undefined ? { externalRole: input.externalRole } : {}),
       ...(input.accessToken !== undefined ? { accessToken: encryptBilimClassSecret(input.accessToken) } : {}),
       ...(input.refreshToken !== undefined ? { refreshToken: encryptBilimClassSecret(input.refreshToken) } : {}),
       ...(input.lastStatus !== undefined ? { lastStatus: input.lastStatus } : {}),
@@ -195,21 +210,20 @@ async function ensureSubjectIdMap(rows: BilimClassYearResponse["data"]["rows"]) 
 }
 
 async function syncYearAndAttendance(connection: ResolvedConnection, yearResponse: BilimClassYearResponse) {
-  if (!connection.student) {
-    throw new Error("BilimClass connection is not linked to a student");
-  }
+  assertStudentConnection(connection);
+  const student = connection.student!;
 
   const subjectIdMap = await ensureSubjectIdMap(yearResponse.data.rows);
   const normalizedGrades = normalizeBilimClassYearData(
     yearResponse,
     connection.eduYear,
     subjectIdMap,
-    connection.student.id
+    student.id
   ).filter((item) => item.rawScore !== null || item.scoreType === ScoreType.no_score);
 
   await prisma.gradeRecord.deleteMany({
     where: {
-      studentId: connection.student.id,
+      studentId: student.id,
       source: "bilimclass",
       schoolYear: connection.eduYear
     }
@@ -225,7 +239,7 @@ async function syncYearAndAttendance(connection: ResolvedConnection, yearRespons
   if (syncedSubjectIds.length) {
     await prisma.attendanceRecord.deleteMany({
       where: {
-        studentId: connection.student.id,
+        studentId: student.id,
         schoolYear: connection.eduYear,
         subjectId: {
           in: syncedSubjectIds
@@ -242,8 +256,8 @@ async function syncYearAndAttendance(connection: ResolvedConnection, yearRespons
 
     await prisma.attendanceRecord.create({
       data: {
-        id: `${connection.student.id}-${subjectId}-${connection.eduYear}-${row.periodType}`,
-        studentId: connection.student.id,
+        id: `${student.id}-${subjectId}-${connection.eduYear}-${row.periodType}`,
+        studentId: student.id,
         subjectId,
         schoolYear: connection.eduYear,
         periodType: row.periodType === "halfyear" ? "halfyear" : "quarter",
@@ -278,6 +292,31 @@ async function fetchSubjectSnapshots(
 
   for (const period of periodPayload) {
     try {
+      const cacheKey = buildBilimClassScopeKey({
+        localStudentId: connection.student?.id ?? "unknown",
+        localUserId: connection.student?.user.id,
+        bilimUserId: connection.bilimUserId,
+        schoolId: connection.schoolId,
+        eduYear: connection.eduYear,
+        groupId: connection.groupId,
+        period: period.period,
+        periodType: period.periodType
+      });
+
+      logBilimClass("info", "subjects-fetch", buildBilimClassDebugContext({
+        localStudentId: connection.student?.id ?? "unknown",
+        localUserId: connection.student?.user.id,
+        bilimUserId: connection.bilimUserId,
+        schoolId: connection.schoolId,
+        eduYear: connection.eduYear,
+        groupId: connection.groupId,
+        period: period.period,
+        periodType: period.periodType,
+        mode: connection.mode,
+        source: connection.mode === "live" ? "live" : "mock",
+        cacheKey
+      }));
+
       const rawDetails = await adapter.getSubjects({
         schoolId: connection.schoolId,
         eduYear: connection.eduYear,
@@ -287,7 +326,10 @@ async function fetchSubjectSnapshots(
         token: connection.accessToken ?? undefined
       });
 
-      const normalized = normalizeBilimClassSubjectData(sanitizeSubjectDetails(rawDetails));
+      const normalized = normalizeBilimClassSubjectData(rawDetails.map((item) => ({
+        ...item,
+        subjectName: sanitizeBilimClassText(item.subjectName)
+      })));
       detailsByPeriod.push({
         period: period.period,
         periodType: period.periodType,
@@ -311,9 +353,8 @@ async function syncConnectionData(
     loginResponse?: BilimClassLoginResponse;
   }
 ) {
-  if (!connection.student) {
-    throw new Error("BilimClass connection is not linked to a student");
-  }
+  assertStudentConnection(connection);
+  const student = connection.student!;
 
   if (!connection.login || !connection.password) {
     throw new Error("BilimClass credentials are not configured");
@@ -327,23 +368,40 @@ async function syncConnectionData(
       password: connection.password
     }));
 
-  const selectedYear = pickSchoolYear(login.user_info.school.eduYears as Array<{ schoolId: number; eduYear: number; isCurrent?: boolean }>, connection.eduYear);
-  const schoolId = selectedYear?.schoolId ?? connection.schoolId;
-  const eduYear = selectedYear?.eduYear ?? connection.eduYear;
-  const groupId = login.user_info.group.id ?? connection.groupId ?? null;
-  const updatedConnection = {
+  const academicContext = resolveBilimClassAcademicContext(login, connection.eduYear);
+  const updatedConnection: ResolvedConnection = {
     ...connection,
-    schoolId,
-    eduYear,
-    groupId,
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
+    groupName: academicContext.groupName,
+    studentFullName: academicContext.studentFullName,
+    externalRole: academicContext.role,
     accessToken: login.access_token,
     refreshToken: login.refresh_token
   };
+  const scopedConnection: StudentBoundConnection = {
+    ...updatedConnection,
+    student
+  };
+
+  const scope = buildConnectionScope(scopedConnection);
+  logBilimClass("info", "sync-start", {
+    ...scope,
+    loginPreview: maskBilimClassSecret(connection.login),
+    accessTokenPreview: maskBilimClassSecret(login.access_token),
+    refreshTokenPreview: maskBilimClassSecret(login.refresh_token)
+  });
 
   await updateConnectionState(connection.id, {
-    schoolId,
-    eduYear,
-    groupId,
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
+    groupName: academicContext.groupName,
+    studentFullName: academicContext.studentFullName,
+    externalRole: academicContext.role,
     accessToken: login.access_token,
     refreshToken: login.refresh_token,
     lastStatus: "syncing"
@@ -351,10 +409,10 @@ async function syncConnectionData(
 
   await prisma.studentProfile.update({
     where: {
-      id: connection.student.id
+      id: student.id
     },
     data: {
-      bilimClassGroupId: groupId ?? undefined,
+      bilimClassGroupId: academicContext.groupId ?? undefined,
       bilimClassStudentUuid: login.user_info.studentInfo.studentGroupUuid ?? undefined
     }
   });
@@ -362,34 +420,49 @@ async function syncConnectionData(
   try {
     const periods = (
       await adapter.getPeriods({
-        schoolId,
-        eduYear,
-        token: updatedConnection.accessToken ?? undefined
+        schoolId: academicContext.schoolId,
+        eduYear: academicContext.eduYear,
+        token: login.access_token
       })
     ).map((item) => ({
       ...item,
       title: sanitizeBilimClassText(item.title)
     }));
 
-    const yearResponse = sanitizeYearResponse(
-      await adapter.getYear({
-        schoolId,
-        eduYear,
-        token: updatedConnection.accessToken ?? undefined
-      })
-    );
+    const rawYearResponse = await adapter.getYear({
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      token: login.access_token
+    });
+    const yearResponse = {
+      data: {
+        ...rawYearResponse.data,
+        groupId: academicContext.groupId ?? rawYearResponse.data.groupId,
+        groupName: academicContext.groupName ?? sanitizeBilimClassText(rawYearResponse.data.groupName),
+        rows: rawYearResponse.data.rows.map((row) => ({
+          ...row,
+          subjectName: sanitizeBilimClassText(row.subjectName)
+        }))
+      }
+    } satisfies BilimClassYearResponse;
 
     const yearSummary = await syncYearAndAttendance(updatedConnection, yearResponse);
-    const subjectSnapshots = groupId ? await fetchSubjectSnapshots(adapter, updatedConnection, periods) : { detailsByPeriod: [], errors: [] };
+    const subjectSnapshots = academicContext.groupId
+      ? await fetchSubjectSnapshots(adapter, updatedConnection, periods)
+      : { detailsByPeriod: [], errors: ["group-context-missing"] };
     const syncStatus = subjectSnapshots.errors.length ? "partial" : "success";
     const syncedAt = new Date();
 
     await updateConnectionState(connection.id, {
-      schoolId,
-      eduYear,
-      groupId,
-      accessToken: updatedConnection.accessToken,
-      refreshToken: updatedConnection.refreshToken,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      groupName: academicContext.groupName,
+      studentFullName: academicContext.studentFullName,
+      externalRole: academicContext.role,
+      accessToken: login.access_token,
+      refreshToken: login.refresh_token,
       lastStatus: syncStatus === "success" ? "student-sync-success" : "student-sync-partial",
       lastSyncedAt: syncedAt
     });
@@ -398,11 +471,7 @@ async function syncConnectionData(
       connectionId: connection.id,
       operation: "student-sync",
       status: syncStatus,
-      requestPayload: {
-        schoolId,
-        eduYear,
-        groupId
-      },
+      requestPayload: scope,
       responseSummary: `Imported ${yearSummary.gradesImported} grades from ${yearSummary.rows} rows; fetched ${subjectSnapshots.detailsByPeriod.length} subject snapshots.`,
       errorMessage: subjectSnapshots.errors.length ? subjectSnapshots.errors.join(" | ") : undefined
     });
@@ -411,69 +480,81 @@ async function syncConnectionData(
       eventType: AuditEventType.bilimclass,
       action: "bilimclass-sync",
       status: syncStatus === "success" ? AuditStatus.success : AuditStatus.warning,
-      actorUserId: connection.student.user.id,
-      actorRole: connection.student.user.role,
-      targetUserId: connection.student.user.id,
+      actorUserId: student.user.id,
+      actorRole: student.user.role,
+      targetUserId: student.user.id,
       entityType: "bilimclass-connection",
       entityId: connection.id,
-      message: `BilimClass sync ${syncStatus} for ${connection.student.user.fullName}`,
+      message: `BilimClass sync ${syncStatus} for ${student.user.fullName}`,
       metadata: {
-        schoolId,
-        eduYear,
-        groupId,
+        ...scope,
         gradesImported: yearSummary.gradesImported,
         subjectSnapshots: subjectSnapshots.detailsByPeriod.length
       }
     });
 
+    logBilimClass(syncStatus === "success" ? "info" : "warn", "sync-finished", {
+      ...scope,
+      gradesImported: yearSummary.gradesImported,
+      subjectSnapshots: subjectSnapshots.detailsByPeriod.length,
+      status: syncStatus
+    });
+
     return {
       connectionId: connection.id,
-      schoolId,
-      eduYear,
-      groupId,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      groupName: academicContext.groupName,
+      studentFullName: academicContext.studentFullName,
       lastSyncedAt: syncedAt,
       periods,
       yearSummary,
       subjectSnapshots: subjectSnapshots.detailsByPeriod,
-      status: syncStatus
+      status: syncStatus,
+      cacheKey: scope.cacheKey
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "BilimClass sync failed";
+
     await updateConnectionState(connection.id, {
-      schoolId,
-      eduYear,
-      groupId,
-      accessToken: updatedConnection.accessToken,
-      refreshToken: updatedConnection.refreshToken,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      groupName: academicContext.groupName,
+      studentFullName: academicContext.studentFullName,
+      externalRole: academicContext.role,
+      accessToken: login.access_token,
+      refreshToken: login.refresh_token,
       lastStatus: "student-sync-failed"
     });
     await writeSyncLog({
       connectionId: connection.id,
       operation: "student-sync",
       status: "failed",
-      requestPayload: {
-        schoolId,
-        eduYear,
-        groupId
-      },
+      requestPayload: scope,
       errorMessage: message
     });
     await createAuditLog({
       eventType: AuditEventType.bilimclass,
       action: "bilimclass-sync-failed",
       status: AuditStatus.failed,
-      actorUserId: connection.student.user.id,
-      actorRole: connection.student.user.role,
-      targetUserId: connection.student.user.id,
+      actorUserId: student.user.id,
+      actorRole: student.user.role,
+      targetUserId: student.user.id,
       entityType: "bilimclass-connection",
       entityId: connection.id,
-      message: `BilimClass sync failed for ${connection.student.user.fullName}: ${message}`,
-      metadata: {
-        schoolId,
-        eduYear,
-        groupId
-      }
+      message: `BilimClass sync failed for ${student.user.fullName}: ${message}`,
+      metadata: scope
     });
+
+    logBilimClass("error", "sync-failed", {
+      ...scope,
+      error: message
+    });
+
     throw new Error(message);
   }
 }
@@ -482,10 +563,10 @@ export function getBilimClassAdapter(mode?: string): BilimClassAdapter {
   return mode === "live" ? new LiveBilimClassAdapter() : new MockBilimClassAdapter();
 }
 
-export async function getBilimClassConnection() {
-  return prisma.bilimClassConnection.findFirst({
-    orderBy: {
-      createdAt: "desc"
+export async function getBilimClassConnectionById(connectionId: string) {
+  return prisma.bilimClassConnection.findUnique({
+    where: {
+      id: connectionId
     },
     include: {
       student: {
@@ -516,7 +597,7 @@ export async function getBilimClassConnectionByStudent(studentId: string) {
 }
 
 export async function loginBilimClass(credentials: { username: string; password: string; mode?: "live" | "mock" }) {
-  const adapter = getBilimClassAdapter(credentials.mode ?? process.env.BILIMCLASS_MODE);
+  const adapter = getBilimClassAdapter(credentials.mode ?? DEFAULT_MODE);
   return adapter.login(credentials);
 }
 
@@ -524,31 +605,61 @@ export async function saveBilimClassConnection(input: {
   mode: "mock" | "live";
   login?: string;
   password?: string;
-  schoolId: number;
-  eduYear: number;
-  groupId?: number;
   linkedStudentId?: string;
   accessToken?: string;
   refreshToken?: string;
+  bilimUserId?: number | null;
+  schoolId: number;
+  eduYear: number;
+  groupId?: number | null;
+  groupName?: string | null;
+  studentFullName?: string | null;
+  externalRole?: string | null;
 }) {
-  const existing = input.linkedStudentId ? await getBilimClassConnectionByStudent(input.linkedStudentId) : null;
+  const existingConnections = input.linkedStudentId
+    ? await prisma.bilimClassConnection.findMany({
+        where: {
+          linkedStudentId: input.linkedStudentId
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      })
+    : [];
+
+  const primaryExisting = existingConnections[0] ?? null;
+  const duplicateIds = existingConnections.slice(1).map((item) => item.id);
+  if (duplicateIds.length) {
+    await prisma.bilimClassConnection.deleteMany({
+      where: {
+        id: {
+          in: duplicateIds
+        }
+      }
+    });
+  }
+
   const data = {
     mode: input.mode,
     baseUrl: DEFAULT_BASE_URL,
     login: encryptBilimClassSecret(input.login),
     password: encryptBilimClassSecret(input.password),
-    schoolId: input.schoolId,
-    eduYear: input.eduYear,
-    groupId: input.groupId,
     linkedStudentId: input.linkedStudentId,
     accessToken: encryptBilimClassSecret(input.accessToken),
     refreshToken: encryptBilimClassSecret(input.refreshToken),
+    bilimUserId: input.bilimUserId ?? null,
+    schoolId: input.schoolId,
+    eduYear: input.eduYear,
+    groupId: input.groupId ?? null,
+    groupName: input.groupName ?? null,
+    studentFullName: input.studentFullName ?? null,
+    externalRole: input.externalRole ?? "student",
     lastStatus: "configured"
   };
 
-  return existing
+  return primaryExisting
     ? prisma.bilimClassConnection.update({
-        where: { id: existing.id },
+        where: { id: primaryExisting.id },
         data
       })
     : prisma.bilimClassConnection.create({
@@ -561,27 +672,32 @@ export async function connectStudentBilimClass(studentId: string, credentials: {
   password: string;
   mode?: "live" | "mock";
 }) {
-  const mode = credentials.mode ?? ((process.env.BILIMCLASS_MODE as "live" | "mock" | undefined) ?? "mock");
+  const mode = credentials.mode ?? DEFAULT_MODE;
   const login = await loginBilimClass({
     username: credentials.username,
     password: credentials.password,
     mode
   });
-  const selectedYear = pickSchoolYear(login.user_info.school.eduYears as Array<{ schoolId: number; eduYear: number; isCurrent?: boolean }>);
-  const schoolId = selectedYear?.schoolId ?? 1013305;
-  const eduYear = selectedYear?.eduYear ?? new Date().getFullYear();
-  const groupId = login.user_info.group.id;
+  const academicContext = resolveBilimClassAcademicContext(login);
+
+  if (!academicContext.schoolId || !academicContext.eduYear) {
+    throw new Error("BilimClass did not return a valid school context");
+  }
 
   const persisted = await saveBilimClassConnection({
     mode,
     login: credentials.username,
     password: credentials.password,
-    schoolId,
-    eduYear,
-    groupId,
     linkedStudentId: studentId,
     accessToken: login.access_token,
-    refreshToken: login.refresh_token
+    refreshToken: login.refresh_token,
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
+    groupName: academicContext.groupName,
+    studentFullName: academicContext.studentFullName,
+    externalRole: academicContext.role
   });
 
   await prisma.studentProfile.update({
@@ -589,7 +705,7 @@ export async function connectStudentBilimClass(studentId: string, credentials: {
       id: studentId
     },
     data: {
-      bilimClassGroupId: groupId,
+      bilimClassGroupId: academicContext.groupId ?? undefined,
       bilimClassStudentUuid: login.user_info.studentInfo.studentGroupUuid ?? undefined
     }
   });
@@ -599,10 +715,13 @@ export async function connectStudentBilimClass(studentId: string, credentials: {
     operation: "connect",
     status: "success",
     requestPayload: {
-      mode,
-      schoolId,
-      eduYear,
-      groupId
+      linkedStudentId: studentId,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      groupName: academicContext.groupName,
+      source: mode
     },
     responseSummary: `BilimClass account connected for student ${studentId}.`
   });
@@ -627,23 +746,19 @@ export async function connectStudentBilimClass(studentId: string, credentials: {
     entityId: persisted.id,
     message: `BilimClass connected for ${student.user.fullName}`,
     metadata: {
-      mode,
-      schoolId,
-      eduYear,
-      groupId
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      groupName: academicContext.groupName,
+      mode
     }
   });
 
-  const fullConnection = await prisma.bilimClassConnection.findUniqueOrThrow({
-    where: { id: persisted.id },
-    include: {
-      student: {
-        include: {
-          user: true
-        }
-      }
-    }
-  });
+  const fullConnection = await getBilimClassConnectionById(persisted.id);
+  if (!fullConnection) {
+    throw new Error("BilimClass connection could not be loaded after connect");
+  }
 
   return syncConnectionData(resolveConnectionSecrets(fullConnection), {
     loginResponse: login
@@ -680,45 +795,73 @@ export async function ensureStudentBilimClassFresh(studentId: string) {
   return getStudentBilimClassStatus(studentId);
 }
 
+export async function clearStudentBilimClassSession(studentId: string) {
+  const connection = await getBilimClassConnectionByStudent(studentId);
+  if (!connection) {
+    return null;
+  }
+
+  await updateConnectionState(connection.id, {
+    accessToken: null,
+    refreshToken: null,
+    lastStatus: "signed-out"
+  });
+
+  await writeSyncLog({
+    connectionId: connection.id,
+    operation: "logout-clear-session",
+    status: "success",
+    requestPayload: buildConnectionScope({
+      ...resolveConnectionSecrets(connection),
+      student: connection.student!
+    }),
+    responseSummary: "Volatile BilimClass session tokens cleared on local logout."
+  });
+
+  return true;
+}
+
 export async function getStudentBilimClassStatus(studentId: string) {
   const connection = await getBilimClassConnectionByStudent(studentId);
 
   if (!connection) {
     return {
       connected: false,
-      mode: (process.env.BILIMCLASS_MODE ?? "mock") as "mock" | "live"
+      mode: DEFAULT_MODE
     };
   }
 
   const latestLog = await getConnectionLatestLog(connection.id);
+  const scopeKey = connection.student
+    ? buildBilimClassScopeKey({
+        localStudentId: connection.student.id,
+        localUserId: connection.student.user.id,
+        bilimUserId: connection.bilimUserId,
+        schoolId: connection.schoolId,
+        eduYear: connection.eduYear,
+        groupId: connection.groupId
+      })
+    : null;
 
   return {
     connected: true,
     mode: connection.mode,
+    bilimUserId: connection.bilimUserId,
     schoolId: connection.schoolId,
     eduYear: connection.eduYear,
     groupId: connection.groupId,
+    groupName: connection.groupName,
+    studentFullName: connection.studentFullName,
     lastStatus: connection.lastStatus,
     lastSyncedAt: connection.lastSyncedAt,
     hasCredentials: Boolean(connection.login && connection.password),
-    latestLog
+    latestLog,
+    cacheKey: scopeKey
   };
 }
 
-export async function syncBilimClassYear(connectionId?: string) {
-  const connection =
-    (connectionId
-      ? await prisma.bilimClassConnection.findUnique({
-          where: { id: connectionId },
-          include: {
-            student: {
-              include: {
-                user: true
-              }
-            }
-          }
-        })
-      : await getBilimClassConnection()) ?? null;
+export async function syncBilimClassYear(connectionId: string) {
+  const connection = await getBilimClassConnectionById(connectionId);
 
   if (!connection || !connection.student) {
     throw new Error("BilimClass connection is not configured");
@@ -727,31 +870,21 @@ export async function syncBilimClassYear(connectionId?: string) {
   const result = await syncConnectionData(resolveConnectionSecrets(connection));
 
   return {
-    connection,
+    connectionId: connection.id,
+    studentId: connection.student.id,
+    cacheKey: result.cacheKey,
     summary: result.yearSummary
   };
 }
 
-export async function syncBilimClassSubjects(params?: {
-  connectionId?: string;
+export async function syncBilimClassSubjects(params: {
+  connectionId: string;
   period?: number;
   periodType?: "quarter" | "halfyear";
 }) {
-  const connection =
-    (params?.connectionId
-      ? await prisma.bilimClassConnection.findUnique({
-          where: { id: params.connectionId },
-          include: {
-            student: {
-              include: {
-                user: true
-              }
-            }
-          }
-        })
-      : await getBilimClassConnection()) ?? null;
+  const connection = await getBilimClassConnectionById(params.connectionId);
 
-  if (!connection) {
+  if (!connection || !connection.student) {
     throw new Error("BilimClass connection is not configured");
   }
 
@@ -765,62 +898,122 @@ export async function syncBilimClassSubjects(params?: {
     username: resolved.login,
     password: resolved.password
   });
+  const academicContext = resolveBilimClassAcademicContext(login, resolved.eduYear);
 
   await updateConnectionState(resolved.id, {
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
+    groupName: academicContext.groupName,
+    studentFullName: academicContext.studentFullName,
+    externalRole: academicContext.role,
     accessToken: login.access_token,
     refreshToken: login.refresh_token
   });
 
-  const period = params?.period ?? 3;
-  const periodType = params?.periodType ?? "quarter";
-  const groupId = login.user_info.group.id ?? resolved.groupId;
-  if (!groupId) {
-    throw new Error("BilimClass group is not configured");
+  const period = params.period ?? 3;
+  const periodType = params.periodType ?? "quarter";
+  if (!academicContext.groupId) {
+    throw new Error("BilimClass group context is missing for this student");
   }
 
-  const details = await adapter.getSubjects({
-    schoolId: resolved.schoolId,
-    eduYear: resolved.eduYear,
+  const cacheKey = buildBilimClassScopeKey({
+    localStudentId: connection.student.id,
+    localUserId: connection.student.user.id,
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
+    period,
+    periodType
+  });
+
+  logBilimClass("info", "subject-sync-request", buildBilimClassDebugContext({
+    localStudentId: connection.student.id,
+    localUserId: connection.student.user.id,
+    bilimUserId: academicContext.bilimUserId,
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    groupId: academicContext.groupId,
     period,
     periodType,
-    groupId,
+    mode: resolved.mode,
+    source: resolved.mode === "live" ? "live" : "mock",
+    cacheKey
+  }));
+
+  const details = await adapter.getSubjects({
+    schoolId: academicContext.schoolId,
+    eduYear: academicContext.eduYear,
+    period,
+    periodType,
+    groupId: academicContext.groupId,
     token: login.access_token
   });
 
-  const normalized = normalizeBilimClassSubjectData(sanitizeSubjectDetails(details));
+  const normalized = normalizeBilimClassSubjectData(details.map((item) => ({
+    ...item,
+    subjectName: sanitizeBilimClassText(item.subjectName)
+  })));
 
   await writeSyncLog({
     connectionId: resolved.id,
     operation: "subject-sync",
     status: "success",
-    requestPayload: { period, periodType },
+    requestPayload: {
+      cacheKey,
+      period,
+      periodType,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      bilimUserId: academicContext.bilimUserId
+    },
     responseSummary: `Fetched ${normalized.length} subject detail rows for ${periodType}-${period}.`
   });
 
-  return normalized;
+  return {
+    cacheKey,
+    rows: normalized
+  };
 }
 
-export async function getBilimClassStatus() {
-  const connection = await getBilimClassConnection();
+export async function getBilimClassStatus(connectionId: string) {
+  const connection = await getBilimClassConnectionById(connectionId);
 
   if (!connection) {
     return {
       connected: false,
-      mode: process.env.BILIMCLASS_MODE ?? "mock"
+      mode: DEFAULT_MODE
     };
   }
 
   const latestLog = await getConnectionLatestLog(connection.id);
+  const scopeKey = connection.student
+    ? buildBilimClassScopeKey({
+        localStudentId: connection.student.id,
+        localUserId: connection.student.user.id,
+        bilimUserId: connection.bilimUserId,
+        schoolId: connection.schoolId,
+        eduYear: connection.eduYear,
+        groupId: connection.groupId
+      })
+    : null;
 
   return {
     connected: true,
     mode: connection.mode,
+    linkedStudentId: connection.linkedStudentId,
+    bilimUserId: connection.bilimUserId,
     schoolId: connection.schoolId,
     eduYear: connection.eduYear,
     groupId: connection.groupId,
-    linkedStudentId: connection.linkedStudentId,
+    groupName: connection.groupName,
+    studentFullName: connection.studentFullName,
     lastStatus: connection.lastStatus,
     lastSyncedAt: connection.lastSyncedAt,
-    latestLog
+    latestLog,
+    cacheKey: scopeKey
   };
 }

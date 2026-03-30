@@ -78,7 +78,7 @@ export default async function AdminAnalyticsPage() {
                     <div className="text-sm font-semibold text-danger">{formatPercent(item.riskShare)}</div>
                   </div>
                   <div className="mt-2 text-sm text-slate-600">
-                    Avg {Math.round(item.avgPerformance)} · Misses {item.attendanceIssues}
+                    Avg {Math.round(item.avgPerformance)} • Misses {item.attendanceIssues}
                   </div>
                 </div>
               ))}

@@ -5,6 +5,8 @@ import { requireSession } from "@/lib/auth/session";
 import { createAuditLog } from "@/lib/services/audit-log-service";
 import { syncStudentBilimClass } from "@/lib/bilimclass/service";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(_: Request, context: { params: Promise<{ studentId: string }> }) {
   try {
     const session = await requireSession([Role.admin]);
@@ -22,10 +24,17 @@ export async function POST(_: Request, context: { params: Promise<{ studentId: s
       message: `Admin triggered BilimClass sync for student ${studentId}`
     });
 
-    return NextResponse.json({
-      ok: true,
-      result
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        result
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return unauthorized();
@@ -39,7 +48,12 @@ export async function POST(_: Request, context: { params: Promise<{ studentId: s
       {
         error: error instanceof Error ? error.message : "Не удалось запустить синхронизацию BilimClass."
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
     );
   }
 }

@@ -12,11 +12,11 @@ import { getCurrentLocale } from "@/lib/i18n/server";
 const copy = {
   ru: {
     title: "Панель управления школой",
-    subtitle: "Краткий обзор состояния школы, ключевых рисков и последних изменений без перегруженных операционных инструментов.",
+    subtitle: "Ключевые риски, изменения в расписании, лента школы и быстрые переходы без перегруженного интерфейса.",
     overview: "Обзор",
     alertsShort: "сигналов",
     quickActions: "Быстрые переходы",
-    quickActionsText: "Тяжёлые действия вынесены в отдельные разделы. На обзорной странице оставлены только краткие сигналы и контекст.",
+    quickActionsText: "Операционные действия вынесены в отдельные разделы. На главной оставлены только важные сигналы и контекст.",
     alerts: "Критические сигналы",
     changes: "Последние изменения в расписании",
     feed: "Лента школы",
@@ -27,13 +27,13 @@ const copy = {
     riskShare: "Доля риска",
     misses: "Пропуски",
     users: "Пользователи и роли",
-    usersText: "Управление аккаунтами, связями родитель-ученик и правками записей.",
+    usersText: "Аккаунты, parent-child связи и ручные правки записей.",
     schedule: "Расписание",
-    scheduleText: "Генерация, конфликты, замены и болезни учителей.",
+    scheduleText: "Генерация, конфликты, замены и absence flow учителей.",
     integrations: "Интеграции",
     integrationsText: "BilimClass, синхронизация и системные журналы.",
     analytics: "Аналитика",
-    analyticsText: "Радар по классам и предметам, attendance и тренды.",
+    analyticsText: "Радар по классам и предметам, attendance и динамика.",
     events: "События и объявления",
     eventsText: "Публикации, новости школы и адресные уведомления.",
     settings: "Настройки",
@@ -43,11 +43,11 @@ const copy = {
   },
   kz: {
     title: "Мектепті басқару панелі",
-    subtitle: "Мектептің жағдайын, негізгі тәуекелдерін және соңғы өзгерістерін артық жүктемесіз көрсететін қысқа шолу.",
+    subtitle: "Негізгі тәуекелдер, кесте өзгерістері, мектеп лентасы және артық жүктемесіз жылдам өтулер.",
     overview: "Шолу",
     alertsShort: "сигнал",
-    quickActions: "Жылдам өту",
-    quickActionsText: "Күрделі әрекеттер бөлек бөлімдерге шығарылды. Бұл бетте тек негізгі сигналдар мен контекст қалды.",
+    quickActions: "Жылдам өтулер",
+    quickActionsText: "Операциялық әрекеттер бөлек бөлімдерге шығарылды. Басты бетте тек маңызды сигналдар мен контекст қалды.",
     alerts: "Маңызды сигналдар",
     changes: "Кестедегі соңғы өзгерістер",
     feed: "Мектеп лентасы",
@@ -58,13 +58,13 @@ const copy = {
     riskShare: "Тәуекел үлесі",
     misses: "Қатыспау",
     users: "Пайдаланушылар мен рөлдер",
-    usersText: "Аккаунттар, ата-ана мен оқушы байланыстары және жазбаларды түзету.",
+    usersText: "Аккаунттар, ата-ана мен бала байланыстары және жазбаларды түзету.",
     schedule: "Кесте",
-    scheduleText: "Генерация, конфликттер, ауыстырулар және мұғалімнің болмауы.",
+    scheduleText: "Генерация, конфликттер, ауыстырулар және teacher absence flow.",
     integrations: "Интеграциялар",
     integrationsText: "BilimClass, синхрондау және жүйелік журналдар.",
     analytics: "Аналитика",
-    analyticsText: "Сыныптар мен пәндер бойынша радар, attendance және трендтер.",
+    analyticsText: "Сыныптар мен пәндер радары, attendance және динамика.",
     events: "Оқиғалар мен хабарламалар",
     eventsText: "Жарияланымдар, мектеп жаңалықтары және бағытталған хабарламалар.",
     settings: "Баптаулар",
@@ -156,7 +156,7 @@ export default async function AdminDashboardPage() {
                 <div key={change.id} className="rounded-2xl bg-slate-50 p-4">
                   <div className="font-medium text-ink">{change.scheduleEntry.title}</div>
                   <div className="mt-1 text-sm text-slate-500">
-                    {change.className ?? "—"} {change.subjectName ? `· ${change.subjectName}` : ""}
+                    {change.className ?? "—"} {change.subjectName ? `• ${change.subjectName}` : ""}
                   </div>
                   <div className="mt-2 text-sm text-slate-600">{change.notes ?? change.reason}</div>
                 </div>
@@ -191,9 +191,7 @@ export default async function AdminDashboardPage() {
             {[...data.events, ...data.notifications].slice(0, 6).map((item) => (
               <div key={item.id} className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-medium text-ink">{item.title}</div>
-                <div className="mt-2 text-sm text-slate-600">
-                  {"description" in item ? item.description : item.body}
-                </div>
+                <div className="mt-2 text-sm text-slate-600">{"description" in item ? item.description : item.body}</div>
               </div>
             ))}
           </div>
@@ -209,11 +207,9 @@ export default async function AdminDashboardPage() {
               <div key={connection.id} className="rounded-2xl bg-slate-50 p-4">
                 <div className="font-medium text-ink">{connection.studentName ?? "—"}</div>
                 <div className="mt-1 text-sm text-slate-500">
-                  {connection.className ?? "—"} · {connection.lastStatus ?? "—"}
+                  {connection.className ?? "—"} • {connection.lastStatus ?? "—"}
                 </div>
-                {connection.latestError ? (
-                  <div className="mt-2 text-sm text-danger">{connection.latestError}</div>
-                ) : null}
+                {connection.latestError ? <div className="mt-2 text-sm text-danger">{connection.latestError}</div> : null}
               </div>
             ))}
             <Link href="/dashboard/admin/integrations" className="inline-flex items-center gap-2 text-sm font-medium text-royal">

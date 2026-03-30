@@ -378,6 +378,25 @@ export async function performAdminBulkAction(
     throw new Error("NO_USERS_SELECTED");
   }
 
+  if (input.action !== "sync-bilimclass" && input.userIds.includes(adminUserId)) {
+    throw new Error("CANNOT_BULK_UPDATE_SELF");
+  }
+
+  if (input.action !== "sync-bilimclass") {
+    const adminTargets = await prisma.user.count({
+      where: {
+        id: {
+          in: input.userIds
+        },
+        role: Role.admin
+      }
+    });
+
+    if (adminTargets > 0) {
+      throw new Error("CANNOT_BULK_UPDATE_ADMIN");
+    }
+  }
+
   if (input.action === "block" || input.action === "unblock") {
     const isBlocked = input.action === "block";
     const result = await prisma.user.updateMany({

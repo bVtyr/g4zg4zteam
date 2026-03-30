@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import {
   Role,
   ScoreType,
@@ -493,7 +493,7 @@ export async function getTeacherDashboardData(locale: Locale = "ru") {
       .filter((item) => item.highestRisk.riskScore >= 45)
       .sort((a, b) => b.highestRisk.riskScore - a.highestRisk.riskScore),
     classReport: buildTeacherReport(locale, {
-      className: teacher.assignments[0]?.schoolClass.name ?? "Class",
+      className: teacher.assignments[0]?.schoolClass.name ?? (locale === "kz" ? "Сынып" : "Класс"),
       items: itemsWithRisk.map((item) => ({
           studentName: item.studentName,
           highestRisk: item.highestRisk,
@@ -967,3 +967,4 @@ export async function createAdminEvent(input: {
 
   return event;
 }
+

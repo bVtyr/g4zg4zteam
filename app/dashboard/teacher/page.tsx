@@ -16,13 +16,14 @@ export default async function TeacherDashboardPage() {
   const atRiskCount = data.riskStudents.length;
   const avgScore =
     data.table.length > 0
-      ? Math.round(
-          data.table.reduce((sum, item) => sum + (item.avgScore ?? 0), 0) / data.table.length
-        )
+      ? Math.round(data.table.reduce((sum, item) => sum + (item.avgScore ?? 0), 0) / data.table.length)
       : 0;
   const totalMisses = data.table.reduce((sum, item) => sum + item.misses, 0);
-  const fallbackRiskLabel = locale === "kz" ? "Әлі дерек жоқ" : "Пока нет данных";
-  const fallbackReason = locale === "kz" ? "Оқушы бойынша бағалар немесе пәндік аналитика әлі қалыптаспаған." : "По ученику пока нет оценок или предметной аналитики.";
+  const fallbackRiskLabel = locale === "kz" ? "Әзірге дерек жоқ" : "Пока нет данных";
+  const fallbackReason =
+    locale === "kz"
+      ? "Оқушы бойынша бағалар немесе пәндік аналитика әлі қалыптаспаған."
+      : "По ученику пока нет достаточных оценок или предметной аналитики.";
 
   return (
     <DashboardShell
@@ -43,14 +44,18 @@ export default async function TeacherDashboardPage() {
       <PageSection
         eyebrow={copy.teacher.title}
         title={locale === "kz" ? "Ерте ескерту" : "Early warning"}
-        description={locale === "kz" ? "Тәуекелі жоғары оқушылар жоғарғы бөлек секцияда, ал жалпы сынып көрінісі төменде." : "Ученики группы риска вынесены в верхнюю отдельную секцию, а общий срез класса оставлен ниже."}
+        description={
+          locale === "kz"
+            ? "Жоғары тәуекел тобы жоғарыда, жалпы сынып көрінісі төменде берілген."
+            : "Сверху вынесены ученики риска, ниже оставлен полный рабочий срез по классу."
+        }
       >
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <TeacherRiskTable items={data.riskStudents} locale={locale} />
           <div className="space-y-6">
             <WeeklyInsightCard title={copy.teacher.report} items={[data.classReport]} />
             <div className="grid gap-4 md:grid-cols-2">
-              <LinkPanel href="/schedule" title={copy.nav.schedule} description={locale === "kz" ? "Кесте мен ауыстырулар." : "Расписание и замены."} />
+              <LinkPanel href="/schedule" title={copy.nav.schedule} description={locale === "kz" ? "Кесте және ауыстырулар." : "Расписание и замены."} />
               <LinkPanel href="/notifications" title={copy.nav.notifications} description={locale === "kz" ? "Мектеп хабарламалары." : "Школьные сообщения."} />
             </div>
           </div>
@@ -59,7 +64,11 @@ export default async function TeacherDashboardPage() {
 
       <PageSection
         title={copy.teacher.performanceView}
-        description={locale === "kz" ? "Толық кестелік көрініс filters пен risk context сақтайды." : "Полный табличный режим оставлен для рабочего просмотра без смешивания с summary-блоками."}
+        description={
+          locale === "kz"
+            ? "Толық кестелік көрініс сабақтағы нақты жұмысқа арналған."
+            : "Полный табличный режим оставлен для ежедневной рабочей картины."
+        }
         action={<Link href="/schedule" className="text-sm font-medium text-royal">{copy.nav.schedule}</Link>}
       >
         <div className="panel overflow-hidden">

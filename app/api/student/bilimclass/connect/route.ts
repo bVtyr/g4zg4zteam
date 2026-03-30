@@ -6,6 +6,8 @@ import { requireSession } from "@/lib/auth/session";
 import { connectStudentBilimClass } from "@/lib/bilimclass/service";
 import { prisma } from "@/lib/db/prisma";
 
+export const dynamic = "force-dynamic";
+
 const schema = z.object({
   username: z.string().trim().min(1),
   password: z.string().min(1)
@@ -35,10 +37,17 @@ export async function POST(request: Request) {
     }
 
     const result = await connectStudentBilimClass(student.id, parsed.data);
-    return NextResponse.json({
-      ok: true,
-      result
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        result
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return unauthorized();
@@ -52,7 +61,12 @@ export async function POST(request: Request) {
       {
         error: error instanceof Error ? error.message : "BilimClass connection failed"
       },
-      { status: 502 }
+      {
+        status: 502,
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
     );
   }
 }

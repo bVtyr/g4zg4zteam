@@ -15,8 +15,8 @@ export function normalizeLocale(value: string | null | undefined): Locale {
 export const dictionary = {
   ru: {
     appName: "Aqbobek Lyceum",
-    appSubtitle: "Образовательный портал",
-    secureSpace: "Единая цифровая среда школы",
+    appSubtitle: "Цифровой школьный портал",
+    secureSpace: "Единая среда для учебы, расписания и коммуникации",
     language: "Язык",
     localeName: { ru: "Русский", kz: "Қазақша" },
     nav: {
@@ -24,7 +24,7 @@ export const dictionary = {
       portfolio: "Портфолио",
       schedule: "Расписание",
       notifications: "Уведомления",
-      kiosk: "Экран"
+      kiosk: "Kiosk"
     },
     role: {
       student: "Ученик",
@@ -35,89 +35,89 @@ export const dictionary = {
     shell: {
       logout: "Выйти",
       overview: "Обзор",
-      schoolSpace: "Единая среда обучения, расписания, аналитики и школьных коммуникаций."
+      schoolSpace: "Оценки, риски, расписание, уведомления и ключевые школьные процессы в одном кабинете."
     },
     login: {
       badge: "Aqbobek Lyceum",
-      title: "Цифровая среда лицея для обучения, аналитики и школьного управления.",
+      title: "Лицей в одной цифровой среде.",
       subtitle:
-        "Оценки, посещаемость, портфолио, уведомления, расписание и аналитика доступны в одном защищенном кабинете.",
+        "Оценки, attendance, AI-аналитика, уведомления и smart schedule собраны в одном защищенном продукте.",
       features: [
-        "Безопасный вход по роли",
-        "Академическая аналитика и риски",
-        "Интеграция BilimClass и расписание"
+        "Ролевой доступ для ученика, учителя, родителя и администрации",
+        "AI-аналитика с понятными следующими шагами",
+        "BilimClass sync, уведомления и smart schedule"
       ],
-      formBadge: "Вход в систему",
+      formBadge: "Вход",
       signIn: "Войти",
       username: "Логин",
       password: "Пароль",
       submit: "Войти",
-      submitting: "Вход...",
-      invalid: "Не удалось выполнить вход. Проверьте логин и пароль.",
-      testAccounts: "Тестовые аккаунты",
-      loading: "Загрузка формы..."
+      submitting: "Входим...",
+      invalid: "Не удалось войти. Проверьте логин и пароль.",
+      testAccounts: "Демо-аккаунты",
+      loading: "Загружаем форму..."
     },
     student: {
       title: "Кабинет ученика",
-      subtitle: "Успеваемость, посещаемость, AI-подсказки, портфолио и учебные цели в одном кабинете.",
-      tutorAdvice: "Рекомендации AI-тьютора",
+      subtitle: "Успеваемость, AI-подсказки, attendance, портфолио и связь с родителями в одном окне.",
+      tutorAdvice: "AI-тьютор",
       weeklySummary: "Итоги недели",
-      gamification: "Мотивация",
+      gamification: "Прогресс и мотивация",
       streak: "Серия",
       leaderboardRank: "Место в рейтинге",
       points: "Баллы"
     },
     teacher: {
       title: "Кабинет учителя",
-      subtitle: "Ранняя диагностика рисков, аналитика класса, таблица успеваемости и AI-отчет.",
+      subtitle: "Риски по ученикам, картина по классу, attendance и готовый AI-отчет без лишнего шума.",
       report: "AI-отчет по классу",
-      performanceView: "Успеваемость класса",
+      performanceView: "Срез по ученикам",
       student: "Ученик",
-      highestRisk: "Предмет с максимальным риском",
+      highestRisk: "Главный риск",
       reason: "Причина",
       misses: "Пропуски"
     },
     parent: {
       title: "Кабинет родителя",
-      subtitle: "Оценки, посещаемость, достижения ребенка и понятная еженедельная сводка.",
-      weeklySummary: "AI-сводка за неделю",
+      subtitle: "Оценки, посещаемость, weekly digest и понятные сигналы по ребенку.",
+      weeklySummary: "Сводка за неделю",
       missesSuffix: "пропусков"
     },
     admin: {
       title: "Панель администрации",
-      subtitle: "Сводная академическая картина школы, уведомления, события и управление расписанием.",
+      subtitle: "Сводка по школе, риски, расписание, интеграции и операционный контроль.",
       classes: "Классы",
       students: "Ученики",
       riskShare: "Доля риска",
       misses: "Пропуски",
       performanceByClass: "Успеваемость по классам",
       performanceBySubject: "Успеваемость по предметам",
-      schoolFeed: "Школьная лента"
+      schoolFeed: "Лента школы"
     },
     portfolio: {
-      title: "Цифровое портфолио",
-      subtitle: "Подтвержденные достижения, сертификаты и участие во внеучебной жизни.",
+      title: "Портфолио",
+      subtitle: "Подтвержденные достижения, сертификаты и школьная активность.",
       achievements: "Достижения",
       certificates: "Сертификаты",
-      items: "Портфолио"
+      items: "Активности"
     },
     schedule: {
       title: "Расписание",
-      subtitle: "Недельное расписание уроков, пар, академических часов, мероприятий и потоковых занятий.",
-      replacement: "замена",
+      subtitle: "Недельное расписание, замены, пары, потоки, события и изменения по дням.",
+      replacement: "Замена",
       days: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     },
     notifications: {
       title: "Уведомления",
-      subtitle: "Адресные сообщения по ролям, классам и общешкольным обновлениям.",
-      read: "прочитано",
-      unread: "новое"
+      subtitle: "Личные и школьные сообщения без лишнего шума.",
+      read: "Прочитано",
+      unread: "Новое"
     },
     kiosk: {
-      mode: "Информационный экран",
+      mode: "Kiosk mode",
       autoRefresh: "Автообновление: 30 сек",
       title: "Школьный экран",
-      topStudents: "Лучшие ученики дня",
+      topStudents: "Лидеры дня",
       announcements: "Объявления",
       changes: "Изменения в расписании",
       allClasses: "Все классы",
@@ -145,7 +145,7 @@ export const dictionary = {
     },
     composer: {
       title: "Центр уведомлений",
-      subtitle: "Создавайте объявления по ролям, классам, параллелям или на всю школу.",
+      subtitle: "Сообщения по ролям, классам, параллелям и всей школе.",
       scopeSchool: "Вся школа",
       scopeClass: "Класс",
       scopeRole: "Роль",
@@ -155,8 +155,8 @@ export const dictionary = {
   },
   kz: {
     appName: "Aqbobek Lyceum",
-    appSubtitle: "Білім порталы",
-    secureSpace: "Мектептің бірыңғай цифрлық ортасы",
+    appSubtitle: "Мектептің цифрлық порталы",
+    secureSpace: "Оқу, кесте және коммуникацияға арналған бірыңғай орта",
     language: "Тіл",
     localeName: { ru: "Русский", kz: "Қазақша" },
     nav: {
@@ -164,7 +164,7 @@ export const dictionary = {
       portfolio: "Портфолио",
       schedule: "Сабақ кестесі",
       notifications: "Хабарламалар",
-      kiosk: "Экран"
+      kiosk: "Kiosk"
     },
     role: {
       student: "Оқушы",
@@ -175,57 +175,57 @@ export const dictionary = {
     shell: {
       logout: "Шығу",
       overview: "Шолу",
-      schoolSpace: "Оқу, кесте, аналитика және мектеп коммуникацияларының біртұтас ортасы."
+      schoolSpace: "Бағалар, тәуекелдер, кесте, хабарламалар және негізгі мектеп процестері бір кабинетте."
     },
     login: {
       badge: "Aqbobek Lyceum",
-      title: "Оқу, талдау және мектеп басқаруына арналған лицейдің цифрлық ортасы.",
+      title: "Лицейге арналған біртұтас цифрлық орта.",
       subtitle:
-        "Бағалар, қатысу, портфолио, хабарламалар, кесте және аналитика бір қорғалған кабинетте біріктірілген.",
+        "Бағалар, attendance, AI-талдау, хабарламалар және smart schedule бір қорғалған өнімде біріктірілген.",
       features: [
-        "Рөл бойынша қауіпсіз кіру",
-        "Академиялық аналитика және тәуекелдер",
-        "BilimClass интеграциясы және кесте"
+        "Оқушы, мұғалім, ата-ана және әкімшіге арналған рөлдік қолжетімділік",
+        "Келесі қадамдары түсінікті AI-аналитика",
+        "BilimClass sync, хабарламалар және smart schedule"
       ],
-      formBadge: "Жүйеге кіру",
+      formBadge: "Кіру",
       signIn: "Кіру",
       username: "Логин",
       password: "Құпиясөз",
       submit: "Кіру",
-      submitting: "Кіру...",
-      invalid: "Кіру орындалмады. Логин мен құпиясөзді тексеріңіз.",
-      testAccounts: "Тест аккаунттары",
+      submitting: "Кіріп жатырмыз...",
+      invalid: "Кіру сәтсіз. Логин мен құпиясөзді тексеріңіз.",
+      testAccounts: "Демо-аккаунттар",
       loading: "Форма жүктелуде..."
     },
     student: {
       title: "Оқушы кабинеті",
-      subtitle: "Үлгерім, қатысу, AI-ұсыныстар, портфолио және оқу мақсаттары бір жерде.",
-      tutorAdvice: "AI-тьютор ұсыныстары",
+      subtitle: "Үлгерім, AI-көмек, attendance, портфолио және ата-анамен байланыс бір жерде.",
+      tutorAdvice: "AI-тьютор",
       weeklySummary: "Апталық қорытынды",
-      gamification: "Мотивация",
+      gamification: "Прогресс пен мотивация",
       streak: "Серия",
       leaderboardRank: "Рейтингтегі орны",
       points: "Ұпай"
     },
     teacher: {
       title: "Мұғалім кабинеті",
-      subtitle: "Тәуекелдерді ерте анықтау, сынып аналитикасы, үлгерім кестесі және AI-есеп.",
+      subtitle: "Оқушы тәуекелдері, сынып көрінісі, attendance және дайын AI-есеп артық мәтінсіз.",
       report: "Сынып бойынша AI-есеп",
-      performanceView: "Сынып үлгерімі",
+      performanceView: "Оқушылар кескіні",
       student: "Оқушы",
-      highestRisk: "Тәуекелі ең жоғары пән",
+      highestRisk: "Негізгі тәуекел",
       reason: "Себеп",
       misses: "Қатыспау"
     },
     parent: {
       title: "Ата-ана кабинеті",
-      subtitle: "Балаңыздың бағалары, қатысуы, жетістіктері және түсінікті апталық қорытынды.",
-      weeklySummary: "Апталық AI-қорытынды",
+      subtitle: "Бағалар, қатысу, weekly digest және бала бойынша түсінікті сигналдар.",
+      weeklySummary: "Апталық қорытынды",
       missesSuffix: "сабақ босату"
     },
     admin: {
       title: "Әкімшілік панелі",
-      subtitle: "Мектептің академиялық көрінісі, хабарламалар, оқиғалар және кестені басқару.",
+      subtitle: "Мектеп бойынша шолу, тәуекелдер, кесте, интеграциялар және операциялық бақылау.",
       classes: "Сыныптар",
       students: "Оқушылар",
       riskShare: "Тәуекел үлесі",
@@ -235,29 +235,29 @@ export const dictionary = {
       schoolFeed: "Мектеп лентасы"
     },
     portfolio: {
-      title: "Цифрлық портфолио",
-      subtitle: "Расталған жетістіктер, сертификаттар және мектептен тыс белсенділік.",
+      title: "Портфолио",
+      subtitle: "Расталған жетістіктер, сертификаттар және мектеп белсенділігі.",
       achievements: "Жетістіктер",
       certificates: "Сертификаттар",
-      items: "Портфолио"
+      items: "Белсенділіктер"
     },
     schedule: {
       title: "Сабақ кестесі",
-      subtitle: "Сабақтар, қос сабақтар, академиялық сағаттар, іс-шаралар және ағындық топтар кестесі.",
-      replacement: "ауыстыру",
+      subtitle: "Апталық кесте, ауыстырулар, қос сабақтар, ағындар, іс-шаралар және күндік өзгерістер.",
+      replacement: "Ауыстыру",
       days: ["Дс", "Сс", "Ср", "Бс", "Жм", "Сб", "Жс"]
     },
     notifications: {
       title: "Хабарламалар",
-      subtitle: "Рөлдерге, сыныптарға және бүкіл мектепке арналған бағытталған хабарламалар.",
-      read: "оқылған",
-      unread: "жаңа"
+      subtitle: "Жеке және мектептік хабарламалар артық шуылсыз.",
+      read: "Оқылған",
+      unread: "Жаңа"
     },
     kiosk: {
-      mode: "Ақпараттық экран",
+      mode: "Kiosk mode",
       autoRefresh: "Автожаңарту: 30 сек",
       title: "Мектеп экраны",
-      topStudents: "Күннің үздік оқушылары",
+      topStudents: "Күн көшбасшылары",
       announcements: "Хабарландырулар",
       changes: "Кестедегі өзгерістер",
       allClasses: "Барлық сынып",
@@ -270,7 +270,7 @@ export const dictionary = {
       totalMisses: "Жалпы босатулар",
       unexcused: "Себепсіз",
       average: "Орташа нәтиже",
-      probabilityFail: "Сәтсіздік ықтималдығы",
+      probabilityFail: "Сәтсіздік тәуекелі",
       trend: "Тренд",
       notAvailable: "Жоқ",
       saved: "Сақталды",
@@ -285,7 +285,7 @@ export const dictionary = {
     },
     composer: {
       title: "Хабарламалар орталығы",
-      subtitle: "Рөлдерге, сыныптарға, параллельдерге немесе бүкіл мектепке хабарлама жасаңыз.",
+      subtitle: "Рөлдерге, сыныптарға, параллельдерге және бүкіл мектепке хабарлама жіберу.",
       scopeSchool: "Бүкіл мектеп",
       scopeClass: "Сынып",
       scopeRole: "Рөл",
@@ -308,30 +308,30 @@ const subjectTranslations: Record<string, Record<Locale, string>> = {
   Homeroom: { ru: "Классный час", kz: "Сынып сағаты" },
   "Informatics Stream A": { ru: "Поток по информатике A", kz: "Информатика ағыны A" },
   "English Double": { ru: "Английский язык: пара", kz: "Ағылшын тілі: қос сабақ" },
-  "Assembly: University Track": { ru: "Сбор: траектория вуза", kz: "Жиын: университет бағыты" }
+  "Assembly: University Track": { ru: "Сбор: университетский трек", kz: "Жиын: университет бағыты" }
 };
 
 const contentTranslations: Record<string, Record<Locale, string>> = {
   "Regional Physics Olympiad": { ru: "Региональная олимпиада по физике", kz: "Физикадан өңірлік олимпиада" },
-  "regional silver": { ru: "серебро регионального уровня", kz: "өңірлік деңгейдегі күміс" },
-  "Robotics Club Demo Day": { ru: "День демонстрации робототехника клубы", kz: "Робототехника клубының таныстыру күні" },
+  "regional silver": { ru: "региональное серебро", kz: "өңірлік күміс" },
+  "Robotics Club Demo Day": { ru: "Демо-день клуба робототехники", kz: "Робототехника клубының демо күні" },
   "AI Literacy Bootcamp": { ru: "Интенсив по AI literacy", kz: "AI literacy интенсиві" },
-  "STEM Research Club": { ru: "STEM зерттеу клубы", kz: "STEM зерттеу клубы" },
-  "Peer Math Mentoring": { ru: "Математика бойынша peer mentoring", kz: "Математика бойынша peer mentoring" },
+  "STEM Research Club": { ru: "STEM research club", kz: "STEM research club" },
+  "Peer Math Mentoring": { ru: "Peer mentoring по математике", kz: "Математика бойынша peer mentoring" },
   club: { ru: "клуб", kz: "клуб" },
   volunteering: { ru: "волонтерство", kz: "еріктілік" },
   "Raise Physics final score to 85+": { ru: "Поднять итог по физике до 85+", kz: "Физика бойынша қорытындыны 85+ деңгейіне жеткізу" },
-  "Zero unexcused absences next month": { ru: "Ноль пропусков без причины в следующем месяце", kz: "Келесі айда себепсіз босатуларды нөлге жеткізу" },
+  "Zero unexcused absences next month": { ru: "Ноль пропусков без причины в следующем месяце", kz: "Келесі айда себепсіз босатуды нөлге түсіру" },
   "Science Sprint": { ru: "Science Sprint", kz: "Science Sprint" },
   "Portfolio Pro": { ru: "Portfolio Pro", kz: "Portfolio Pro" },
   "High momentum in STEM subjects": { ru: "Сильная динамика по STEM-предметам", kz: "STEM пәндері бойынша жоғары қарқын" },
   "Verified achievements and certificates": { ru: "Подтвержденные достижения и сертификаты", kz: "Расталған жетістіктер мен сертификаттар" },
-  "AIS Hack 3.0 Demo Rehearsal": { ru: "Репетиция презентаций AIS Hack 3.0", kz: "AIS Hack 3.0 таныстырылым репетициясы" },
+  "AIS Hack 3.0 Demo Rehearsal": { ru: "Репетиция AIS Hack 3.0", kz: "AIS Hack 3.0 репетициясы" },
   "Final rehearsal in the assembly hall for all finalists.": {
     ru: "Финальная репетиция в актовом зале для всех финалистов.",
-    kz: "Барлық финалистерге арналған акт залындағы соңғы репетиция."
+    kz: "Барлық финалистерге арналған соңғы репетиция акт залында өтеді."
   },
-  "Physics consultation moved": { ru: "Консультация по физике перенесена", kz: "Физика бойынша консультация ауыстырылды" },
+  "Physics consultation moved": { ru: "Консультация по физике перенесена", kz: "Физика консультациясы ауыстырылды" },
   "Today's physics consultation starts at 16:10 in Lab 301.": {
     ru: "Сегодняшняя консультация по физике начнется в 16:10 в лаборатории 301.",
     kz: "Бүгінгі физика консультациясы 16:10-да 301-зертханада басталады."
@@ -343,7 +343,7 @@ const contentTranslations: Record<string, Record<Locale, string>> = {
   },
   "Hackathon rehearsal reminder": { ru: "Напоминание о репетиции", kz: "Репетиция туралы еске салу" },
   "Hackathon rehearsal reminder starts soon. Bring your presentation decks.": {
-    ru: "Репетиция скоро начнется. Подготовьте свои презентации.",
+    ru: "Репетиция скоро начнется. Подготовьте презентации.",
     kz: "Репетиция жақын арада басталады. Презентацияларыңызды дайындаңыз."
   }
 };
@@ -383,13 +383,13 @@ export function translateTrend(locale: Locale, value: TrendLabel) {
       improving: "улучшается",
       stable: "стабильно",
       declining: "снижается",
-      critical_decline: "критическое снижение"
+      critical_decline: "резкое снижение"
     },
     kz: {
-      improving: "жақсаруда",
+      improving: "жақсарып жатыр",
       stable: "тұрақты",
-      declining: "төмендеуде",
-      critical_decline: "критикалық төмендеу"
+      declining: "төмендеп жатыр",
+      critical_decline: "күрт төмендеу"
     }
   } as const;
 
@@ -400,13 +400,13 @@ export function translateRiskStatus(locale: Locale, value: "strong" | "stable" |
   const map = {
     ru: {
       strong: "сильная зона",
-      stable: "стабильно",
-      risk: "риск"
+      stable: "рабочая зона",
+      risk: "зона риска"
     },
     kz: {
       strong: "күшті аймақ",
-      stable: "тұрақты",
-      risk: "тәуекел"
+      stable: "тұрақты аймақ",
+      risk: "тәуекел аймағы"
     }
   } as const;
 

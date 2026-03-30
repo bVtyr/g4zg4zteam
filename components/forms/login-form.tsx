@@ -13,14 +13,14 @@ const authCopy = {
     role: "Роль",
     classLabel: "Класс",
     createAccount: "Создать аккаунт",
-    creating: "Создание...",
+    creating: "Создаем...",
     switchToLogin: "Уже есть аккаунт? Войти",
     switchToRegister: "Нет аккаунта? Зарегистрироваться",
     classRequired: "Для ученика нужно выбрать класс.",
     usernameTaken: "Этот логин уже занят.",
     emailTaken: "Этот email уже используется.",
     registrationFailed: "Не удалось создать аккаунт.",
-    roleHint: "Публично доступны роли student, parent и teacher."
+    roleHint: "Публичная регистрация открыта для ученика, родителя и учителя."
   },
   kz: {
     register: "Тіркелу",
@@ -35,8 +35,8 @@ const authCopy = {
     classRequired: "Оқушы үшін сынып таңдау қажет.",
     usernameTaken: "Бұл логин бос емес.",
     emailTaken: "Бұл email қолданылып тұр.",
-    registrationFailed: "Аккаунт құру мүмкін болмады.",
-    roleHint: "Ашық тіркеуге student, parent және teacher рөлдері қолжетімді."
+    registrationFailed: "Аккаунт ашу мүмкін болмады.",
+    roleHint: "Ашық тіркеу оқушы, ата-ана және мұғалім үшін қолжетімді."
   }
 } as const;
 
@@ -138,24 +138,30 @@ export function LoginForm({
       {mode === "register" ? (
         <input
           name="fullName"
+          autoComplete="name"
           className="w-full rounded-2xl border border-slate-200 px-4 py-3"
           placeholder={extra.fullName}
+          required
         />
       ) : null}
 
       <input
         name="username"
+        autoComplete="username"
         defaultValue={mode === "login" ? "student" : ""}
         className="w-full rounded-2xl border border-slate-200 px-4 py-3"
         placeholder={copy.login.username}
+        required
       />
 
       {mode === "register" ? (
         <input
           name="email"
+          autoComplete="email"
           className="w-full rounded-2xl border border-slate-200 px-4 py-3"
           placeholder={extra.email}
           type="email"
+          required
         />
       ) : null}
 
@@ -169,7 +175,7 @@ export function LoginForm({
           >
             {[Role.student, Role.parent, Role.teacher].map((role) => (
               <option key={role} value={role}>
-                {translateRole(locale, role)}
+                {extra.role}: {translateRole(locale, role)}
               </option>
             ))}
           </select>
@@ -192,10 +198,12 @@ export function LoginForm({
 
       <input
         name="password"
+        autoComplete={mode === "login" ? "current-password" : "new-password"}
         defaultValue={mode === "login" ? "demo12345" : ""}
         type="password"
         className="w-full rounded-2xl border border-slate-200 px-4 py-3"
         placeholder={copy.login.password}
+        required
       />
       {error ? <div className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}
       <button disabled={pending} className="w-full rounded-2xl bg-royal px-5 py-3 font-semibold text-white">

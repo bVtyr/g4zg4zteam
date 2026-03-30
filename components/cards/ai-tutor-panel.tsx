@@ -6,7 +6,7 @@ const copy = {
     title: "AI-тьютор",
     forecast: "Прогноз",
     gaps: "Темы риска",
-    resources: "Видеолекции для подготовки",
+    resources: "Материалы для подготовки",
     nextSteps: "Следующие шаги",
     mastery: "освоение"
   },
@@ -14,9 +14,9 @@ const copy = {
     title: "AI-тьютор",
     forecast: "Болжам",
     gaps: "Тәуекел тақырыптары",
-    resources: "Дайындыққа арналған бейнедәрістер",
+    resources: "Дайындық материалдары",
     nextSteps: "Келесі қадамдар",
-    mastery: "меңгеру"
+    mastery: "игеру"
   }
 } as const;
 

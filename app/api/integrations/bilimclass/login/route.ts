@@ -2,17 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { Role } from "@prisma/client";
+import { resolveBilimClassAcademicContext } from "@/lib/bilimclass/context";
 import { loginBilimClass, saveBilimClassConnection } from "@/lib/bilimclass/service";
 
 const schema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   mode: z.enum(["live", "mock"]).default("mock"),
-  schoolId: z.number().int().optional(),
-  eduYear: z.number().int().optional(),
-  groupId: z.number().int().optional(),
   linkedStudentId: z.string().optional()
 });
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   await requireSession([Role.admin]);
@@ -26,26 +26,36 @@ export async function POST(request: Request) {
     password: parsed.data.password,
     mode: parsed.data.mode
   });
+  const context = resolveBilimClassAcademicContext(login);
+  const connection = parsed.data.linkedStudentId
+    ? await saveBilimClassConnection({
+        mode: parsed.data.mode,
+        login: parsed.data.username,
+        password: parsed.data.password,
+        linkedStudentId: parsed.data.linkedStudentId,
+        accessToken: login.access_token,
+        refreshToken: login.refresh_token,
+        bilimUserId: context.bilimUserId,
+        schoolId: context.schoolId,
+        eduYear: context.eduYear,
+        groupId: context.groupId,
+        groupName: context.groupName,
+        studentFullName: context.studentFullName,
+        externalRole: context.role
+      })
+    : null;
 
-  const eduYear = parsed.data.eduYear ?? login.user_info.school.eduYears[0]?.eduYear ?? 2025;
-  const schoolId = parsed.data.schoolId ?? login.user_info.school.eduYears[0]?.schoolId ?? 1013305;
-  const groupId = parsed.data.groupId ?? login.user_info.group.id;
-
-  const connection = await saveBilimClassConnection({
-    mode: parsed.data.mode,
-    login: parsed.data.username,
-    password: parsed.data.password,
-    schoolId,
-    eduYear,
-    groupId,
-    linkedStudentId: parsed.data.linkedStudentId,
-    accessToken: login.access_token,
-    refreshToken: login.refresh_token
-  });
-
-  return NextResponse.json({
-    ok: true,
-    connection,
-    login
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      connection,
+      context,
+      login
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store"
+      }
+    }
+  );
 }

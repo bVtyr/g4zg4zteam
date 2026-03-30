@@ -47,10 +47,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ userI
       {
         error:
           error instanceof Error && error.message === "STUDENT_CLASS_REQUIRED"
-            ? "Для роли student требуется classId."
+            ? "Student role requires a class assignment."
             : error instanceof Error
               ? error.message
-              : "Не удалось обновить пользователя."
+              : "Failed to update user."
       },
       { status: 400 }
     );

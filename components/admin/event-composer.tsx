@@ -6,7 +6,7 @@ import { type Locale } from "@/lib/i18n";
 const copy = {
   ru: {
     title: "Публикация события",
-    subtitle: "Отдельная форма для школьных мероприятий и новостей без смешивания с уведомлениями.",
+    subtitle: "Отдельная форма для школьных событий и новостей без смешения с уведомлениями.",
     eventType: "Тип события",
     description: "Описание",
     location: "Локация",
@@ -14,7 +14,15 @@ const copy = {
     end: "Завершение",
     publish: "Опубликовать событие",
     saved: "Событие опубликовано.",
-    failed: "Не удалось сохранить событие."
+    failed: "Не удалось сохранить событие.",
+    titlePlaceholder: "Название события",
+    types: {
+      news: "Новость",
+      competition: "Конкурс",
+      assembly: "Сбор",
+      celebration: "Праздник",
+      meeting: "Встреча"
+    }
   },
   kz: {
     title: "Іс-шара жариялау",
@@ -26,7 +34,15 @@ const copy = {
     end: "Аяқталуы",
     publish: "Іс-шараны жариялау",
     saved: "Іс-шара жарияланды.",
-    failed: "Іс-шараны сақтау мүмкін болмады."
+    failed: "Іс-шараны сақтау мүмкін болмады.",
+    titlePlaceholder: "Іс-шара атауы",
+    types: {
+      news: "Жаңалық",
+      competition: "Байқау",
+      assembly: "Жиын",
+      celebration: "Мереке",
+      meeting: "Кездесу"
+    }
   }
 } as const;
 
@@ -40,12 +56,14 @@ export function EventComposer({ locale }: { locale: Locale }) {
       onSubmit={async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        const startsAt = String(formData.get("startsAt") ?? "");
+        const endsAt = String(formData.get("endsAt") ?? "");
         const payload = {
           title: String(formData.get("title") ?? ""),
           description: String(formData.get("description") ?? ""),
           type: String(formData.get("type") ?? "news"),
-          startsAt: String(formData.get("startsAt") ?? ""),
-          endsAt: String(formData.get("endsAt") ?? ""),
+          startsAt: startsAt ? new Date(startsAt).toISOString() : "",
+          endsAt: endsAt ? new Date(endsAt).toISOString() : "",
           location: String(formData.get("location") ?? "")
         };
 
@@ -62,34 +80,31 @@ export function EventComposer({ locale }: { locale: Locale }) {
         <h3 className="text-lg font-semibold text-ink">{t.title}</h3>
         <p className="mt-1 text-sm text-slate-600">{t.subtitle}</p>
       </div>
-      <input name="title" className="w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="Title" />
+      <input name="title" className="w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder={t.titlePlaceholder} required />
       <textarea
         name="description"
         className="min-h-28 w-full rounded-2xl border border-slate-200 px-4 py-3"
         placeholder={t.description}
+        required
       />
       <div className="grid gap-3 md:grid-cols-2">
         <select name="type" className="rounded-2xl border border-slate-200 px-4 py-3">
-          <option value="news">News</option>
-          <option value="competition">Competition</option>
-          <option value="assembly">Assembly</option>
-          <option value="celebration">Celebration</option>
-          <option value="meeting">Meeting</option>
+          <option value="news">{t.types.news}</option>
+          <option value="competition">{t.types.competition}</option>
+          <option value="assembly">{t.types.assembly}</option>
+          <option value="celebration">{t.types.celebration}</option>
+          <option value="meeting">{t.types.meeting}</option>
         </select>
-        <input
-          name="location"
-          className="rounded-2xl border border-slate-200 px-4 py-3"
-          placeholder={t.location}
-        />
+        <input name="location" className="rounded-2xl border border-slate-200 px-4 py-3" placeholder={t.location} />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-2 text-sm text-slate-500">
           <span>{t.start}</span>
-          <input name="startsAt" type="datetime-local" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-ink" />
+          <input name="startsAt" type="datetime-local" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-ink" required />
         </label>
         <label className="space-y-2 text-sm text-slate-500">
           <span>{t.end}</span>
-          <input name="endsAt" type="datetime-local" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-ink" />
+          <input name="endsAt" type="datetime-local" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-ink" required />
         </label>
       </div>
       <div className="flex items-center justify-between">

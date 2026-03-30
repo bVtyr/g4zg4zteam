@@ -31,7 +31,11 @@ export default async function ParentDashboardPage() {
       <PageSection
         eyebrow={copy.parent.title}
         title={locale === "kz" ? "Балаға қолжеткізу" : "Доступ к ребенку"}
-        description={locale === "kz" ? "Алдымен баланы қосу, содан кейін тыныш және қысқа шолу." : "Сначала добавление ребенка, затем спокойный и короткий родительский обзор."}
+        description={
+          locale === "kz"
+            ? "Алдымен баланы қосып, содан кейін қысқа әрі түсінікті ата-ана view ашылады."
+            : "Сначала привязка ребенка, затем короткий и понятный родительский обзор."
+        }
       >
         <ParentChildLinkCard locale={locale} linkedChildren={data.linkedChildren} />
       </PageSection>
@@ -47,7 +51,11 @@ export default async function ParentDashboardPage() {
 
           <PageSection
             title={locale === "kz" ? "Оқу нәтижелері" : "Учебные результаты"}
-            description={locale === "kz" ? "Баланы бағалау көрінісі қысқа карточкаларға бөлінді." : "Академическая картина ребёнка разбита на короткие карточки без перегруза."}
+            description={
+              locale === "kz"
+                ? "Баланың оқу көрінісі қысқа карточкаларға бөлінген."
+                : "Академическая картина ребенка собрана в короткие карточки без перегруза."
+            }
           >
             <div className="grid gap-4 xl:grid-cols-4">
               {data.grades.slice(0, 4).map((item) => (
@@ -58,7 +66,11 @@ export default async function ParentDashboardPage() {
 
           <PageSection
             title={locale === "kz" ? "Апталық бақылау" : "Недельное наблюдение"}
-            description={locale === "kz" ? "Attendance, AI summary және келесі қадамдар бөлек секцияда." : "Attendance, AI summary и следующие шаги вынесены в отдельную спокойную секцию."}
+            description={
+              locale === "kz"
+                ? "Attendance, AI summary және келесі қадамдар бір секцияда."
+                : "Attendance, AI summary и конкретные следующие шаги собраны в одном разделе."
+            }
           >
             <div className="grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
               <AttendanceSummary totalMisses={data.attendance.totalMisses} unexcused={data.attendance.unexcused} locale={locale} />
@@ -78,10 +90,14 @@ export default async function ParentDashboardPage() {
 
           <PageSection
             title={locale === "kz" ? "Қосымша бөлімдер" : "Дополнительные разделы"}
-            description={locale === "kz" ? "Портфолио мен кестеге артық шуылсыз өту." : "Переход к портфолио и расписанию без лишнего визуального шума."}
+            description={
+              locale === "kz"
+                ? "Портфолио мен кестеге жылдам өту."
+                : "Быстрый переход к портфолио и расписанию без лишнего шума."
+            }
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <LinkPanel href="/portfolio" title={copy.nav.portfolio} description={locale === "kz" ? "Жетістіктер мен сертификаттар." : "Достижения и сертификаты ребёнка."} />
+              <LinkPanel href="/portfolio" title={copy.nav.portfolio} description={locale === "kz" ? "Баланың жетістіктері мен сертификаттары." : "Достижения и сертификаты ребенка."} />
               <LinkPanel href="/schedule" title={copy.nav.schedule} description={locale === "kz" ? "Апталық кесте мен ауыстырулар." : "Недельное расписание и замены."} />
             </div>
           </PageSection>

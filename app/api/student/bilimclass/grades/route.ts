@@ -6,6 +6,8 @@ import { getStudentBilimClassGradebookView } from "@/lib/bilimclass/gradebook";
 import { prisma } from "@/lib/db/prisma";
 import { getStudentDashboardData } from "@/lib/services/portal-data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession([Role.student]);
@@ -34,7 +36,11 @@ export async function GET(request: NextRequest) {
       periodKey
     });
 
-    return NextResponse.json(view);
+    return NextResponse.json(view, {
+      headers: {
+        "Cache-Control": "no-store"
+      }
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return unauthorized();
@@ -48,7 +54,12 @@ export async function GET(request: NextRequest) {
       {
         error: error instanceof Error ? error.message : "Failed to load gradebook"
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
     );
   }
 }

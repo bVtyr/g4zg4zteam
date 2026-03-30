@@ -1,6 +1,7 @@
-import { GradeSource, ScoreType, type PeriodType } from "@prisma/client";
+﻿import { GradeSource, ScoreType, type PeriodType } from "@prisma/client";
 import { decryptBilimClassSecret } from "@/lib/bilimclass/crypto";
-import { getBilimClassAdapter } from "@/lib/bilimclass/service";
+import { buildBilimClassDebugContext, buildBilimClassScopeKey, resolveBilimClassAcademicContext, sanitizeBilimClassText } from "@/lib/bilimclass/context";
+import { getBilimClassAdapter, getBilimClassConnectionByStudent } from "@/lib/bilimclass/service";
 import type {
   BilimClassPeriod,
   BilimClassSubjectDetail,
@@ -114,6 +115,14 @@ export type GradebookView = {
     overviewEndpoint: string;
     detailEndpoint: string;
     strategyNote: string;
+    source: "live" | "mock" | "snapshot" | "none";
+    remoteError: string | null;
+    cacheKey: string | null;
+    localStudentId: string;
+    bilimUserId: number | null;
+    schoolId: number | null;
+    groupId: number | null;
+    eduYear: number | null;
   };
 };
 
@@ -122,15 +131,15 @@ function copy(locale: Locale) {
     ? {
         tabs: {
           grades: "Бағалар",
-          year: "Жылдық бағалар"
+          year: "Жылдық қорытынды"
         },
         periodsEmpty: "Кезеңдер табылмады",
         noScore: "Бағаланбайды",
-        pass: "Өтті",
-        fail: "Қауіп",
-        confidenceHigh: "Сенімді",
+        pass: "Есептелді",
+        fail: "Тәуекел",
+        confidenceHigh: "Жоғары",
         confidenceMedium: "Орташа",
-        confidenceLow: "Бақылау керек",
+        confidenceLow: "Төмен",
         quarter: "тоқсан",
         halfyear: "жартыжылдық",
         year: "Жылдық",
@@ -138,46 +147,37 @@ function copy(locale: Locale) {
         final: "Қорытынды",
         predicted: "Болжам",
         current: "Ағымдағы",
-        missing: "Қатыспау",
-        sourceNote: "Сводка diary/year арқылы, таңдалған кезеңнің детализациясы diary/subjects арқылы жүктеледі."
+        missing: "Сабақ босату",
+        sourceNote: "Жылдық сводка `diary/year` арқылы, таңдалған кезеңнің детализациясы `diary/subjects` арқылы жүктеледі.",
+        remoteError: "BilimClass деректерін жаңарту мүмкін болмады. Соңғы сақталған деректер көрсетілді."
       }
     : {
         tabs: {
-          grades: "Бағалар",
-          year: "Жылдық бағалар"
+          grades: "Оценки",
+          year: "Годовой итог"
         },
         periodsEmpty: "Периоды не найдены",
         noScore: "Без оценки",
-        pass: "Зачет",
+        pass: "Зачёт",
         fail: "Риск",
         confidenceHigh: "Высокая",
         confidenceMedium: "Средняя",
         confidenceLow: "Низкая",
         quarter: "четверть",
         halfyear: "полугодие",
-        year: "Годовая",
+        year: "Годовой",
         exam: "Экзамен",
-        final: "Итоговая",
+        final: "Итог",
         predicted: "Прогноз",
         current: "Текущая",
         missing: "Пропуски",
-        sourceNote: "Сводка загружается через diary/year, детализация выбранного периода — через diary/subjects."
+        sourceNote: "Годовая сводка идёт через `diary/year`, детализация выбранного периода через `diary/subjects`.",
+        remoteError: "Не удалось обновить BilimClass. Показаны последние сохранённые данные."
       };
 }
 
 function periodKey(periodType: "quarter" | "halfyear", period: number) {
   return `${periodType}:${period}`;
-}
-
-function sanitizeBilimClassText(value?: string | null) {
-  if (!value) {
-    return value ?? "";
-  }
-
-  const repaired = Buffer.from(value, "latin1").toString("utf8");
-  const originalWeight = (value.match(/[РЎРЃР‚Р†Р‡]/g) ?? []).length;
-  const repairedWeight = (repaired.match(/[РЎРЃР‚Р†Р‡]/g) ?? []).length;
-  return repairedWeight + 2 < originalWeight ? repaired : value;
 }
 
 function normalizePeriodLabel(locale: Locale, period: BilimClassPeriod) {
@@ -187,25 +187,20 @@ function normalizePeriodLabel(locale: Locale, period: BilimClassPeriod) {
     : `${period.period} ${t.halfyear}`;
 }
 
-function derivePeriodsFromSummary(rows: StudentGradeSummaryRow[], locale: Locale) {
+function derivePeriodsFromSummary(rows: StudentGradeSummaryRow[]) {
   const unique = new Map<string, GradePeriodSummary>();
   for (const row of rows) {
     for (const period of row.periods) {
-      if (period.periodType !== "quarter" && period.periodType !== "halfyear" && period.periodType !== "year") {
+      if (period.periodType !== "quarter" && period.periodType !== "halfyear") {
         continue;
       }
-      const key = periodKey(
-        period.periodType === "year" ? "halfyear" : period.periodType,
-        period.periodNumber
-      );
-      if (period.periodType === "year") {
-        continue;
-      }
+
+      const key = periodKey(period.periodType, period.periodNumber);
       if (!unique.has(key)) {
         unique.set(key, {
           key,
           period: period.periodNumber,
-          periodType: period.periodType === "halfyear" ? "halfyear" : "quarter",
+          periodType: period.periodType,
           label: period.label,
           hasData: true
         });
@@ -338,8 +333,7 @@ function aggregateCategoryStats(detail: BilimClassSubjectDetail | null, row: Stu
 
   const totals = detail.schedules.reduce(
     (acc, item) => {
-      const bucket =
-        item.type === "soch" ? "term" : item.type === "sor" ? "summative" : "formative";
+      const bucket = item.type === "soch" ? "term" : item.type === "sor" ? "summative" : "formative";
       acc[bucket] += item.markMax || 0;
       acc.total += item.markMax || 0;
       return acc;
@@ -371,14 +365,17 @@ function buildPeriodBadges(
 ) {
   const t = copy(locale);
   if (activeTab === "year") {
-    return [
-      {
-        id: `${row.subjectId}-current`,
-        label: row.currentRawScore ?? row.currentNormalizedScore !== null ? formatBadgeLabel(locale, row.scoreType, row.currentRawScore, row.currentNormalizedScore) : "—",
-        shortLabel: t.current,
-        tone: scoreToneFromRaw(row.scoreType, row.currentRawScore, row.currentNormalizedScore)
-      }
-    ].filter((item) => item.label !== "—");
+    const currentLabel = formatBadgeLabel(locale, row.scoreType, row.currentRawScore, row.currentNormalizedScore);
+    return currentLabel === "—"
+      ? []
+      : [
+          {
+            id: `${row.subjectId}-current`,
+            label: currentLabel,
+            shortLabel: t.current,
+            tone: scoreToneFromRaw(row.scoreType, row.currentRawScore, row.currentNormalizedScore)
+          }
+        ];
   }
 
   const relevant = row.periods.filter((period) => {
@@ -422,9 +419,7 @@ function buildRows(args: {
   activePeriod: GradePeriodSummary | null;
   subjectUuidBySubjectId: Map<string, string>;
 }) {
-  const yearRows = new Map(
-    (args.yearResponse?.data.rows ?? []).map((row) => [row.eduSubjectUuid, row])
-  );
+  const yearRows = new Map((args.yearResponse?.data.rows ?? []).map((row) => [row.eduSubjectUuid, row]));
   const detailMap = new Map(args.detailRows.map((row) => [row.eduSubjectUuid, row]));
 
   return args.summaryRows.map((row) => {
@@ -513,17 +508,17 @@ async function getSubjectUuidBySubjectId(studentId: string) {
 }
 
 async function getRemoteBilimData(studentId: string, locale: Locale, selectedTab: "grades" | "year", requestedPeriodKey?: string | null) {
-  const connection = await prisma.bilimClassConnection.findFirst({
-    where: {
-      linkedStudentId: studentId
-    },
-    orderBy: {
-      createdAt: "desc"
-    }
-  });
+  const connection = await getBilimClassConnectionByStudent(studentId);
 
-  if (!connection) {
+  if (!connection?.student) {
     return {
+      source: "none" as const,
+      remoteError: null,
+      cacheKey: null,
+      bilimUserId: null,
+      schoolId: null,
+      eduYear: null,
+      groupId: null,
       periods: [] as GradePeriodSummary[],
       activePeriod: null as GradePeriodSummary | null,
       yearResponse: null as BilimClassYearResponse | null,
@@ -535,6 +530,13 @@ async function getRemoteBilimData(studentId: string, locale: Locale, selectedTab
   const password = decryptBilimClassSecret(connection.password);
   if (!login || !password) {
     return {
+      source: "snapshot" as const,
+      remoteError: "BilimClass credentials are missing for this account",
+      cacheKey: null,
+      bilimUserId: connection.bilimUserId,
+      schoolId: connection.schoolId,
+      eduYear: connection.eduYear,
+      groupId: connection.groupId,
       periods: [] as GradePeriodSummary[],
       activePeriod: null as GradePeriodSummary | null,
       yearResponse: null as BilimClassYearResponse | null,
@@ -543,74 +545,123 @@ async function getRemoteBilimData(studentId: string, locale: Locale, selectedTab
   }
 
   const adapter = getBilimClassAdapter(connection.mode);
-  const auth = await adapter.login({
-    username: login,
-    password
-  });
-  const schoolId = connection.schoolId ?? auth.user_info.school.eduYears[0]?.schoolId;
-  const eduYear = connection.eduYear ?? auth.user_info.school.eduYears[0]?.eduYear;
-  const groupId = connection.groupId ?? auth.user_info.group.id;
 
-  if (!schoolId || !eduYear) {
+  try {
+    const auth = await adapter.login({
+      username: login,
+      password
+    });
+    const academicContext = resolveBilimClassAcademicContext(auth, connection.eduYear);
+    const periods = (
+      await adapter.getPeriods({
+        schoolId: academicContext.schoolId,
+        eduYear: academicContext.eduYear,
+        token: auth.access_token
+      })
+    ).map((period) => ({
+      key: periodKey(period.periodType, period.period),
+      period: period.period,
+      periodType: period.periodType,
+      label: normalizePeriodLabel(locale, {
+        ...period,
+        title: sanitizeBilimClassText(period.title)
+      }),
+      hasData: period.hasData
+    }));
+
+    const yearResponse = await adapter.getYear({
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      token: auth.access_token
+    });
+    yearResponse.data.groupName = academicContext.groupName ?? sanitizeBilimClassText(yearResponse.data.groupName);
+    yearResponse.data.groupId = academicContext.groupId ?? yearResponse.data.groupId;
+    yearResponse.data.rows = yearResponse.data.rows.map((row) => ({
+      ...row,
+      subjectName: sanitizeBilimClassText(row.subjectName)
+    }));
+
+    const activePeriod = chooseActivePeriod(periods, requestedPeriodKey);
+    const cacheKey = buildBilimClassScopeKey({
+      localStudentId: connection.student.id,
+      localUserId: connection.student.user.id,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      period: activePeriod?.period ?? null,
+      periodType: selectedTab === "year" ? "year" : activePeriod?.periodType ?? null
+    });
+
+    console.info(
+      "[bilimclass] gradebook-fetch",
+      buildBilimClassDebugContext({
+        localStudentId: connection.student.id,
+        localUserId: connection.student.user.id,
+        bilimUserId: academicContext.bilimUserId,
+        schoolId: academicContext.schoolId,
+        eduYear: academicContext.eduYear,
+        groupId: academicContext.groupId,
+        period: activePeriod?.period ?? null,
+        periodType: selectedTab === "year" ? "year" : activePeriod?.periodType ?? null,
+        mode: connection.mode,
+        source: connection.mode === "live" ? "live" : "mock",
+        cacheKey
+      })
+    );
+
+    const detailRows =
+      selectedTab === "grades" && activePeriod && academicContext.groupId
+        ? (await adapter.getSubjects({
+            schoolId: academicContext.schoolId,
+            eduYear: academicContext.eduYear,
+            period: activePeriod.period,
+            periodType: activePeriod.periodType,
+            groupId: academicContext.groupId,
+            token: auth.access_token
+          }))
+            .map((row) => ({
+              ...row,
+              subjectName: sanitizeBilimClassText(row.subjectName)
+            }))
+        : [];
+
     return {
+      source: connection.mode === "live" ? ("live" as const) : ("mock" as const),
+      remoteError: null,
+      cacheKey,
+      bilimUserId: academicContext.bilimUserId,
+      schoolId: academicContext.schoolId,
+      eduYear: academicContext.eduYear,
+      groupId: academicContext.groupId,
+      periods,
+      activePeriod,
+      yearResponse,
+      detailRows
+    };
+  } catch (error) {
+    return {
+      source: "snapshot" as const,
+      remoteError: error instanceof Error ? error.message : copy(locale).remoteError,
+      cacheKey: buildBilimClassScopeKey({
+        localStudentId: connection.student.id,
+        localUserId: connection.student.user.id,
+        bilimUserId: connection.bilimUserId,
+        schoolId: connection.schoolId,
+        eduYear: connection.eduYear,
+        groupId: connection.groupId,
+        periodType: selectedTab === "year" ? "year" : null
+      }),
+      bilimUserId: connection.bilimUserId,
+      schoolId: connection.schoolId,
+      eduYear: connection.eduYear,
+      groupId: connection.groupId,
       periods: [] as GradePeriodSummary[],
       activePeriod: null as GradePeriodSummary | null,
       yearResponse: null as BilimClassYearResponse | null,
       detailRows: [] as BilimClassSubjectDetail[]
     };
   }
-
-  const periods = (
-    await adapter.getPeriods({
-      schoolId,
-      eduYear,
-      token: auth.access_token
-    })
-  ).map((period) => ({
-    key: periodKey(period.periodType, period.period),
-    period: period.period,
-    periodType: period.periodType,
-    label: normalizePeriodLabel(locale, {
-      ...period,
-      title: sanitizeBilimClassText(period.title)
-    }),
-    hasData: period.hasData
-  }));
-
-  const yearResponse = await adapter.getYear({
-    schoolId,
-    eduYear,
-    token: auth.access_token
-  });
-  yearResponse.data.groupName = sanitizeBilimClassText(yearResponse.data.groupName);
-  yearResponse.data.rows = yearResponse.data.rows.map((row) => ({
-    ...row,
-    subjectName: sanitizeBilimClassText(row.subjectName)
-  }));
-
-  const activePeriod = chooseActivePeriod(periods, requestedPeriodKey);
-  const detailRows =
-    selectedTab === "grades" && activePeriod && groupId
-      ? (await adapter.getSubjects({
-          schoolId,
-          eduYear,
-          period: activePeriod.period,
-          periodType: activePeriod.periodType,
-          groupId,
-          token: auth.access_token
-        }))
-          .map((row) => ({
-            ...row,
-            subjectName: sanitizeBilimClassText(row.subjectName)
-          }))
-      : [];
-
-  return {
-    periods,
-    activePeriod,
-    yearResponse,
-    detailRows
-  };
 }
 
 export async function getStudentBilimClassGradebookView(args: {
@@ -622,72 +673,46 @@ export async function getStudentBilimClassGradebookView(args: {
 }) {
   const activeTab = args.tab ?? "grades";
   const subjectUuidBySubjectId = await getSubjectUuidBySubjectId(args.studentId);
-  const fallbackPeriods = derivePeriodsFromSummary(args.summaryRows, args.locale);
+  const fallbackPeriods = derivePeriodsFromSummary(args.summaryRows);
+  const remote = await getRemoteBilimData(args.studentId, args.locale, activeTab, args.periodKey);
+  const periods = remote.periods.length ? remote.periods : fallbackPeriods;
+  const activePeriod = activeTab === "grades" ? remote.activePeriod ?? chooseActivePeriod(periods, args.periodKey) : null;
 
-  try {
-    const remote = await getRemoteBilimData(args.studentId, args.locale, activeTab, args.periodKey);
-    const periods = remote.periods.length ? remote.periods : fallbackPeriods;
-    const activePeriod = activeTab === "grades" ? remote.activePeriod ?? chooseActivePeriod(periods, args.periodKey) : null;
-
-    return {
-      tabs: [
-        { key: "grades", label: copy(args.locale).tabs.grades },
-        { key: "year", label: copy(args.locale).tabs.year }
-      ],
+  return {
+    tabs: [
+      { key: "grades", label: copy(args.locale).tabs.grades },
+      { key: "year", label: copy(args.locale).tabs.year }
+    ],
+    activeTab,
+    periods,
+    activePeriodKey: activePeriod?.key ?? null,
+    rows: buildRows({
+      locale: args.locale,
+      summaryRows: args.summaryRows,
+      yearResponse: remote.yearResponse,
+      detailRows: remote.detailRows,
       activeTab,
-      periods,
-      activePeriodKey: activePeriod?.key ?? null,
-      rows: buildRows({
-        locale: args.locale,
-        summaryRows: args.summaryRows,
-        yearResponse: remote.yearResponse,
-        detailRows: remote.detailRows,
-        activeTab,
-        activePeriod,
-        subjectUuidBySubjectId
-      }),
-      legend: [
-        { label: "90+", tone: "excellent" as const },
-        { label: "70–89", tone: "good" as const },
-        { label: "50–69", tone: "warning" as const },
-        { label: "< 50", tone: "danger" as const }
-      ],
-      dataSource: {
-        overviewEndpoint: "/api/v4/os/clientoffice/diary/year",
-        detailEndpoint: "/api/v4/os/clientoffice/diary/subjects",
-        strategyNote: copy(args.locale).sourceNote
-      }
-    } satisfies GradebookView;
-  } catch {
-    const activePeriod = activeTab === "grades" ? chooseActivePeriod(fallbackPeriods, args.periodKey) : null;
-    return {
-      tabs: [
-        { key: "grades", label: copy(args.locale).tabs.grades },
-        { key: "year", label: copy(args.locale).tabs.year }
-      ],
-      activeTab,
-      periods: fallbackPeriods,
-      activePeriodKey: activePeriod?.key ?? null,
-      rows: buildRows({
-        locale: args.locale,
-        summaryRows: args.summaryRows,
-        yearResponse: null,
-        detailRows: [],
-        activeTab,
-        activePeriod,
-        subjectUuidBySubjectId
-      }),
-      legend: [
-        { label: "90+", tone: "excellent" as const },
-        { label: "70–89", tone: "good" as const },
-        { label: "50–69", tone: "warning" as const },
-        { label: "< 50", tone: "danger" as const }
-      ],
-      dataSource: {
-        overviewEndpoint: "/api/v4/os/clientoffice/diary/year",
-        detailEndpoint: "/api/v4/os/clientoffice/diary/subjects",
-        strategyNote: copy(args.locale).sourceNote
-      }
-    } satisfies GradebookView;
-  }
+      activePeriod,
+      subjectUuidBySubjectId
+    }),
+    legend: [
+      { label: "90+", tone: "excellent" as const },
+      { label: "70-89", tone: "good" as const },
+      { label: "50-69", tone: "warning" as const },
+      { label: "< 50", tone: "danger" as const }
+    ],
+    dataSource: {
+      overviewEndpoint: "/api/v4/os/clientoffice/diary/year",
+      detailEndpoint: "/api/v4/os/clientoffice/diary/subjects",
+      strategyNote: copy(args.locale).sourceNote,
+      source: remote.source,
+      remoteError: remote.remoteError,
+      cacheKey: remote.cacheKey,
+      localStudentId: args.studentId,
+      bilimUserId: remote.bilimUserId,
+      schoolId: remote.schoolId,
+      groupId: remote.groupId,
+      eduYear: remote.eduYear
+    }
+  } satisfies GradebookView;
 }

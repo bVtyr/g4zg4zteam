@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useTransition } from "react";
 import type { Locale } from "@/lib/i18n";
@@ -11,20 +11,20 @@ import { SubjectGradeDetailsDrawer } from "@/components/grades/subject-grade-det
 
 const copy = {
   ru: {
-    title: "Успеваемость из BilimClass",
-    subtitle:
-      "Табличный журнал по предметам, периодам и итоговым оценкам в рабочем формате, близком к BilimClass.",
-    empty: "Подключите BilimClass и выполните первую синхронизацию, чтобы загрузить журнал оценок.",
-    loading: "Загрузка оценок...",
-    refreshError: "Не удалось обновить данные BilimClass."
+    title: "Успеваемость BilimClass",
+    subtitle: "Журнал по предметам, периодам и итогам с детализацией выбранного периода.",
+    empty: "Подключите BilimClass и выполните первую синхронизацию.",
+    loading: "Обновляем оценки...",
+    refreshError: "Не удалось обновить данные BilimClass.",
+    remoteSnapshot: "Онлайн-детализация недоступна. Показана последняя сохранённая версия."
   },
   kz: {
     title: "BilimClass үлгерімі",
-    subtitle:
-      "BilimClass логикасына жақын жұмыс форматындағы пәндер, кезеңдер және қорытынды бағалар журналы.",
-    empty: "Бағалар журналын жүктеу үшін BilimClass аккаунтын қосып, алғашқы синхрондауды орындаңыз.",
-    loading: "Бағалар жүктеліп жатыр...",
-    refreshError: "BilimClass деректерін жаңарту мүмкін болмады."
+    subtitle: "Пәндер, кезеңдер және қорытынды бағалар бір журналда көрсетіледі.",
+    empty: "BilimClass аккаунтын қосып, алғашқы синхрондауды орындаңыз.",
+    loading: "Бағалар жаңартылып жатыр...",
+    refreshError: "BilimClass деректерін жаңарту мүмкін болмады.",
+    remoteSnapshot: "Онлайн детализация қолжетімсіз. Соңғы сақталған нұсқа көрсетілді."
   }
 } as const;
 
@@ -113,6 +113,11 @@ export function StudentGradebook({
           <div className="space-y-4">
             {isPending ? <div className="text-sm text-slate-500">{t.loading}</div> : null}
             {error ? <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div> : null}
+            {!error && view.dataSource.remoteError ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {view.dataSource.remoteError || t.remoteSnapshot}
+              </div>
+            ) : null}
             <GradesTable
               locale={locale}
               rows={view.rows}

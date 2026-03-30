@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -108,10 +108,10 @@ type AdminData = {
 const copy = {
   ru: {
     center: "Операционный центр",
-    subtitle: "Логи, быстрые правки, массовые действия, BilimClass и контроль привязок из одной панели.",
+    subtitle: "Логи, быстрые правки, массовые действия, BilimClass и контроль связей из одной панели.",
     alerts: "Критические сигналы",
     userManagement: "Пользователи",
-    linkManagement: "Привязки родителей",
+    linkManagement: "Связи родителей",
     gradeManagement: "Модерация оценок",
     logs: "Журнал событий",
     search: "Поиск",
@@ -121,7 +121,7 @@ const copy = {
     active: "Активен",
     blocked: "Заблокирован",
     save: "Сохранить",
-    saving: "Сохранение...",
+    saving: "Сохраняем...",
     details: "Карточка",
     blockSelected: "Заблокировать",
     unblockSelected: "Разблокировать",
@@ -744,3 +744,4 @@ export function AdminControlCenter({
     </section>
   );
 }
+

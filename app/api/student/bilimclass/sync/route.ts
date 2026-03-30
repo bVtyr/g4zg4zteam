@@ -5,6 +5,8 @@ import { requireSession } from "@/lib/auth/session";
 import { syncStudentBilimClass } from "@/lib/bilimclass/service";
 import { prisma } from "@/lib/db/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   try {
     const session = await requireSession([Role.student]);
@@ -21,10 +23,17 @@ export async function POST() {
       return forbidden("Student profile not found");
     }
 
-    return NextResponse.json({
-      ok: true,
-      result: await syncStudentBilimClass(student.id)
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        result: await syncStudentBilimClass(student.id)
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return unauthorized();
@@ -38,7 +47,12 @@ export async function POST() {
       {
         error: error instanceof Error ? error.message : "BilimClass sync failed"
       },
-      { status: 502 }
+      {
+        status: 502,
+        headers: {
+          "Cache-Control": "no-store"
+        }
+      }
     );
   }
 }

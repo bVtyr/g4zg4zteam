@@ -32,7 +32,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Не удалось выполнить массовое действие."
+        error:
+          error instanceof Error && error.message === "CANNOT_BULK_UPDATE_SELF"
+            ? "You cannot block or unblock your own admin account."
+            : error instanceof Error && error.message === "CANNOT_BULK_UPDATE_ADMIN"
+              ? "Bulk block or unblock is not allowed for admin accounts."
+              : error instanceof Error
+                ? error.message
+                : "Failed to perform bulk action."
       },
       { status: 400 }
     );

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { RefreshCcw, ShieldCheck, Unplug } from "lucide-react";
@@ -8,9 +8,13 @@ import { cn, formatPercent } from "@/lib/utils";
 
 type BilimClassState = {
   connected: boolean;
+  bilimUserId?: number | null;
   schoolId?: number;
   eduYear?: number;
   groupId?: number | null;
+  groupName?: string | null;
+  studentFullName?: string | null;
+  cacheKey?: string | null;
   lastStatus?: string | null;
   lastSyncedAt?: string | Date | null;
   overallAverage?: number | null;
@@ -26,53 +30,53 @@ type BilimClassState = {
 const copy = {
   ru: {
     eyebrow: "BilimClass",
-    titleConnected: "Аккаунт подключен",
-    titleDisconnected: "Подключите аккаунт BilimClass",
-    subtitleConnected: "Оценки и посещаемость синхронизируются в личный кабинет через защищенный серверный канал.",
-    subtitleDisconnected: "Введите логин и пароль от BilimClass. Система проверит доступ и подтянет оценки, периоды и посещаемость.",
+    titleConnected: "Аккаунт подключён",
+    titleDisconnected: "Подключите BilimClass",
+    subtitleConnected: "Оценки и посещаемость синхронизируются через защищённый серверный канал.",
+    subtitleDisconnected: "Введите логин и пароль BilimClass. Система проверит доступ и привяжет аккаунт к вашему профилю.",
     username: "Логин BilimClass",
     password: "Пароль BilimClass",
-    connect: "Подключить и загрузить",
-    reconnect: "Обновить учетные данные",
+    connect: "Подключить",
+    reconnect: "Обновить привязку",
     syncing: "Синхронизация...",
     syncNow: "Обновить оценки",
     connected: "Подключено",
     notConnected: "Не подключено",
     lastSync: "Последняя синхронизация",
     schoolYear: "Учебный год",
-    group: "Класс BilimClass",
+    group: "Класс",
     average: "Средний балл",
     subjects: "Предметов",
-    risks: "Предметов с риском",
-    successConnect: "BilimClass подключен, оценки загружены.",
+    risks: "Зон риска",
+    successConnect: "BilimClass подключён. Контекст и оценки обновлены.",
     successSync: "Оценки обновлены.",
-    secureStorage: "Учетные данные хранятся в зашифрованном виде.",
+    secureStorage: "Токены хранятся в зашифрованном виде и очищаются при logout.",
     upstreamError: "Не удалось получить данные BilimClass. Проверьте логин, пароль или доступность сервиса."
   },
   kz: {
     eyebrow: "BilimClass",
-    titleConnected: "Аккаунт қосылған",
-    titleDisconnected: "BilimClass аккаунтын қосыңыз",
-    subtitleConnected: "Бағалар мен қатысу деректері қорғалған серверлік арна арқылы жеке кабинетке синхрондалады.",
-    subtitleDisconnected: "BilimClass логині мен құпиясөзін енгізіңіз. Жүйе қолжетімділікті тексеріп, бағалар мен қатысу деректерін жүктейді.",
+    titleConnected: "Аккаунт қосылды",
+    titleDisconnected: "BilimClass қосыңыз",
+    subtitleConnected: "Бағалар мен қатысу деректері қорғалған серверлік арна арқылы синхрондалады.",
+    subtitleDisconnected: "BilimClass логині мен құпиясөзін енгізіңіз. Жүйе аккаунтты профиліңізге байлайды.",
     username: "BilimClass логині",
     password: "BilimClass құпиясөзі",
-    connect: "Қосып, деректерді жүктеу",
-    reconnect: "Деректерді жаңарту",
+    connect: "Қосу",
+    reconnect: "Байланысты жаңарту",
     syncing: "Синхрондалып жатыр...",
     syncNow: "Бағаларды жаңарту",
     connected: "Қосылған",
     notConnected: "Қосылмаған",
     lastSync: "Соңғы синхрондау",
     schoolYear: "Оқу жылы",
-    group: "BilimClass сыныбы",
+    group: "Сынып",
     average: "Орташа балл",
     subjects: "Пәндер",
-    risks: "Тәуекелі бар пәндер",
-    successConnect: "BilimClass қосылды, бағалар жүктелді.",
+    risks: "Тәуекел аймақтары",
+    successConnect: "BilimClass қосылды. Контекст пен бағалар жаңартылды.",
     successSync: "Бағалар жаңартылды.",
-    secureStorage: "Есептік деректер шифрланған түрде сақталады.",
-    upstreamError: "BilimClass деректерін алу мүмкін болмады. Логинді, құпиясөзді немесе сервистің қолжетімділігін тексеріңіз."
+    secureStorage: "Токендер шифрланған түрде сақталады және logout кезінде тазартылады.",
+    upstreamError: "BilimClass деректерін алу мүмкін болмады. Логинді, құпиясөзді немесе сервисті тексеріңіз."
   }
 } as const;
 
@@ -221,7 +225,7 @@ export function BilimClassConnectionCard({
         </div>
         <div className="rounded-lg border border-slate-200 px-4 py-3">
           <div className="text-slate-500">{t.group}</div>
-          <div className="mt-1 font-medium text-ink">{state.groupId ?? "—"}</div>
+          <div className="mt-1 font-medium text-ink">{state.groupName ?? state.groupId ?? "—"}</div>
         </div>
       </div>
 
@@ -230,7 +234,7 @@ export function BilimClassConnectionCard({
         onSubmit={(event) => {
           event.preventDefault();
           const formData = new FormData(event.currentTarget);
-          connect(formData);
+          void connect(formData);
         }}
       >
         <input
