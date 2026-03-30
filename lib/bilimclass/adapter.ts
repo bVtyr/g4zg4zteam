@@ -56,6 +56,29 @@ async function fetchJson<T>(url: string, init: RequestInit) {
   }
 }
 
+function unwrapArrayPayload<T>(
+  payload: T[] | { data?: T[]; items?: T[]; result?: T[] },
+  label: string
+) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+  if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  if (Array.isArray(payload.result)) {
+    return payload.result;
+  }
+
+  throw new Error(`BilimClass ${label} response is not an array payload`);
+}
+
 function hashSeed(value: string) {
   let hash = 7;
   for (const char of value) {
@@ -171,14 +194,14 @@ export class LiveBilimClassAdapter implements BilimClassAdapter {
   }
 
   getPeriods(args: { schoolId: number; eduYear: number; token?: string }) {
-    return fetchJson<BilimClassPeriod[]>(
+    return fetchJson<BilimClassPeriod[] | { data?: BilimClassPeriod[]; items?: BilimClassPeriod[]; result?: BilimClassPeriod[] }>(
       `${this.baseUrl}/api/v4/os/clientoffice/diary/periods?schoolId=${args.schoolId}&eduYear=${args.eduYear}`,
       {
         headers: {
           Authorization: `Bearer ${args.token ?? ""}`
         }
       }
-    );
+    ).then((payload) => unwrapArrayPayload(payload, "periods"));
   }
 
   getYear(args: { schoolId: number; eduYear: number; token?: string }) {
@@ -200,14 +223,16 @@ export class LiveBilimClassAdapter implements BilimClassAdapter {
     groupId: number;
     token?: string;
   }) {
-    return fetchJson<BilimClassSubjectDetail[]>(
+    return fetchJson<
+      BilimClassSubjectDetail[] | { data?: BilimClassSubjectDetail[]; items?: BilimClassSubjectDetail[]; result?: BilimClassSubjectDetail[] }
+    >(
       `${this.baseUrl}/api/v4/os/clientoffice/diary/subjects?schoolId=${args.schoolId}&eduYear=${args.eduYear}&period=${args.period}&periodType=${args.periodType}&groupId=${args.groupId}`,
       {
         headers: {
           Authorization: `Bearer ${args.token ?? ""}`
         }
       }
-    );
+    ).then((payload) => unwrapArrayPayload(payload, "subjects"));
   }
 }
 
